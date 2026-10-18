@@ -26,8 +26,9 @@ export const SEED_GAMES = [
   ['Arabian Nights', { J: 5130830, M: 3518550 }],
   ["Addams Family", { M: 34251560, J: 24000000 }],
 ];
-// Matt's Stern Insider Connected scores (reference/stern-insider-scores-2026-10-18.md), the nine cabinets whose
-// names printed. A cabinet with a Pro and a Premium score gets both as score lines; the best shows outside.
+// Matt's Stern Insider Connected scores (reference/stern-insider-scores-2026-10-18.md), in the order of his trophy
+// room, named by Matt on 2026-10-18. A cabinet with a Pro and a Premium score gets both as score lines; the best
+// shows outside. The Walking Dead score is on the Notes' Walking Dead above (Decision 2026-10-18: one game per title).
 export const SEED_STERN = [
   ['Dungeons & Dragons', [222327420]],
   ['Fallout', [59899200]],
@@ -35,7 +36,19 @@ export const SEED_STERN = [
   ['Godzilla', [125202950, 19971040]],
   ['John Wick', [94140660]],
   ['Guardians of the Galaxy', [153290910]],
-  ['The Mandalorian', [77266990]],
+  ['Star Wars The Mandalorian', [77266990]],
   ['Star Wars', [228113220]],
-  ['Iron Maiden', [109818380, 20711870]],
+  ['Iron Maiden Legacy of the Beast', [109818380, 20711870]],
+  ['The Uncanny X-Men', [51781580, 19064960]],
+  ['King Kong Myth of Terror Island', [90756910]],
+  ['Pokemon', [176154760, 73453420]],
+  ['Jurassic Park', [81986190]],
+  ['Jaws', [67605150, 114720810]],
+  ['The Black Knight Sword of Rage', [45364960, 18830200]],
+  ['Star Wars Fall of the Empire', [96381520]],
+  ['Stranger Things', [118776400]],
+  ['007', [82126150]],
+  ['Rush', [26510480]],
+  ['Teenage Mutant Ninja Turtles', [12206150]],
+  ['Deadpool', [161184280]],
 ];

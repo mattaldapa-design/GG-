@@ -20,21 +20,30 @@ Named cabinets (pages 1-3):
 | Star Wars                      | 228,113,220 |             |
 | Iron Maiden: Legacy of the Beast | 109,818,380 | 20,711,870 |
 
-Twelve more cards (pages 4-7) printed with their logo missing, so the agent
-cannot tell which cabinets they are. Their scores, in page order:
+Twelve more cards (pages 4-7) printed with their logo missing. Matt named
+them on 2026-10-18, in order ("That should line up"), and the three cards
+whose scores he quoted (Guardians, The Walking Dead, Deadpool) sit exactly
+where the PDF has them, so the order is taken as right. Names are his
+spellings. He typed Deadpool's score as "161,1184,280"; the PDF reads
+161,184,280.
 
-| Card | Pro         | Premium     |
-|------|-------------|-------------|
-| 10   | 51,781,580  | 19,064,960  |
-| 11   | 90,756,910  |             |
-| 12   | 176,154,760 | 73,453,420  |
-| 13   | 81,986,190  |             |
-| 14   | 67,605,150  | 114,720,810 |
-| 15   | 45,364,960  | 18,830,200  |
-| 16   | 96,381,520  |             |
-| 17   | 118,776,400 |             |
-| 18   | 82,126,150  |             |
-| 19   |             | 41,354,380  | Matt, 2026-10-18: The Walking Dead, a later iteration than the Notes' machine; kept as one game. |
-| 20   | 26,510,480  |             |
-| 21   | 12,206,150  |             |
-| 22   | 161,184,280 |             |
+| Card | Cabinet (Matt's name)           | Pro         | Premium     |
+|------|---------------------------------|-------------|-------------|
+| 10   | The Uncanny X-Men               | 51,781,580  | 19,064,960  |
+| 11   | King Kong Myth of Terror Island | 90,756,910  |             |
+| 12   | Pokemon                         | 176,154,760 | 73,453,420  |
+| 13   | Jurassic Park                   | 81,986,190  |             |
+| 14   | Jaws                            | 67,605,150  | 114,720,810 |
+| 15   | The Black Knight Sword of Rage  | 45,364,960  | 18,830,200  |
+| 16   | Star Wars Fall of the Empire    | 96,381,520  |             |
+| 17   | Stranger Things                 | 118,776,400 |             |
+| 18   | 007                             | 82,126,150  |             |
+| 19   | The Walking Dead                |             | 41,354,380  |
+| 20   | Rush                            | 26,510,480  |             |
+| 21   | Teenage Mutant Ninja Turtles    | 12,206,150  |             |
+| 22   | Deadpool                        | 161,184,280 |             |
+
+Card 19 is a later iteration of the Notes' Walking Dead; kept as one game
+(Decision 2026-10-18). For the named cards Matt's names are also used where
+the agent had read a shorter one: "Star Wars The Mandalorian", "Iron Maiden
+Legacy of the Beast".

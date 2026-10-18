@@ -45,10 +45,10 @@ pencil. "Who played?" offers the names already in the app as chips. Back up
 everything to one `.json` with the pictures inside (share sheet, or a
 download), and Import a backup brings it back. An offline shell through a
 service worker. On first open the app seeds itself with Pinball: Matt's 22
-cabinets from his Notes (Matt and Jordan) plus the 9 named cabinets from his
-Stern Insider scores (Matt only; a Pro and a Premium score become two score
-lines on the one cabinet), and his Stern Walking Dead score as a second line
-on the Notes' Walking Dead (Decision of 2026-10-18). Where the Notes used a loose spelling the seed
+cabinets from his Notes (Matt and Jordan) plus 21 cabinets from his Stern
+Insider scores (Matt only; a Pro and a Premium score become two score lines
+on the one cabinet), and his Stern Walking Dead score as a second line on
+the Notes' Walking Dead (Decision of 2026-10-18). Where the Notes used a loose spelling the seed
 uses the cabinet's real name (Theatre of Magic, Ghostbusters, Indiana Jones,
 Addams Family, Monster Mash); "5,948000" was read as 5,948,000. Those are the
 agent's readings, and every name can be changed in the app.
@@ -86,9 +86,9 @@ in this session; the service worker's cache on a published address.
 changed file does not reach an installed phone until `VERSION` in
 `app/sw.js` and `APP_VERSION` in `app/js/app.js` are bumped together.
 
-**Waiting on Matt:** 11 Stern Insider cards whose logos did not print
-(see `reference/stern-insider-scores-2026-10-18.md`); their cabinets are
-not in the seed until he names them. Card 19 he named: Walking Dead.
+**Seed completed 2026-10-18:** Matt named the 12 Stern cards whose logos did
+not print (see `reference/stern-insider-scores-2026-10-18.md`), so the
+seed now holds 43 games: his 22 from Notes and 21 from Stern Insider.
 
 ## Runbook
 
@@ -327,9 +327,11 @@ decided, where it is enforced, and what it **serves**.
 **Open decisions — waiting on Matt, oldest first:**
 
 
-- *2026-10-18* — **Eleven Stern cards still unnamed** (cards 10 to 22 in
-  `reference/stern-insider-scores-2026-10-18.md`, less card 19, which is
-  Walking Dead). Their scores wait outside the seed until he names them.
+- *2026-10-18* — **Publishing to GitHub Pages**, after the names: Matt
+  creates (or lets the agent create, in the browser he is signed in to) a
+  repository `friendly-competition` under mattaldapa-design, the agent
+  pushes, Matt switches Pages on once, then adds the address to his home
+  screen. No remote and no `gh` tool on this PC as of 2026-10-18.
 
 ## Not now
 
