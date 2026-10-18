@@ -3,7 +3,7 @@ import * as db from './db.js';
 import { esc, uid, todayIso, fmtDate, parseScore, fmtScore, initials, safeId, safeText, bestOf, leaderOf } from './util.js';
 import { SEED_CATEGORY, SEED_PLAYERS, SEED_GAMES, SEED_STERN } from './seed.js';
 
-const APP_VERSION = 1; // keep in step with VERSION in sw.js
+const APP_VERSION = 2; // keep in step with VERSION in sw.js
 const $ = (s, r = document) => r.querySelector(s);
 const $$ = (s, r = document) => [...r.querySelectorAll(s)];
 const app = $('#app');
@@ -77,7 +77,8 @@ async function touch(store, obj) { obj.updatedAt = Date.now(); await db.put(stor
 async function playersOf(gameId) { return (await db.where('players', 'gameId', gameId)).sort((a, b) => (a.order ?? 0) - (b.order ?? 0)); }
 async function gamesOf(categoryId) { return (await db.where('games', 'categoryId', categoryId)).sort((a, b) => (a.order ?? 0) - (b.order ?? 0)); }
 async function deletePlayer(p) {
-  for (const s of p.scores || []) if (s.photoId) await db.del('photos', s.photoId);
+  const game = await db.get('games', p.gameId);
+  for (const s of p.scores || []) if (s.photoId && s.photoId !== game?.photoId) await db.del('photos', s.photoId);
   await db.del('players', p.id);
 }
 async function deleteGame(g) {
@@ -134,6 +135,7 @@ let renderSeq = 0;
 const stale = (my) => my !== renderSeq;
 function paint(my, html) { if (stale(my)) return false; app.innerHTML = html; return true; }
 let reloadWhenIdle = false;
+let lastCat = null;
 window.addEventListener('gg-new-worker', () => { reloadWhenIdle = true; });
 async function render() {
   if (reloadWhenIdle) { reloadWhenIdle = false; if (leaveHook) { const h = leaveHook; leaveHook = null; await h(); } location.reload(); return; }
@@ -148,6 +150,8 @@ async function render() {
     if (!p.length) return await home();
     if (p[0] === 'new') return newCategory();
     if (p[0] === 'settings') return await settingsPage();
+    if (p[0] !== 'c' || p[1] !== lastCat) gameQuery = '';
+    lastCat = p[0] === 'c' ? p[1] : null;
     if (p[0] === 'c') {
       const cat = await db.get('categories', p[1]);
       if (!cat) return await home();
@@ -230,32 +234,60 @@ function newCategory() {
   input.onkeydown = (e) => { if (e.key === 'Enter') save(); };
 }
 
+// Which way a category shows its games (I4): tiles by default, list as the other way. Remembered per phone.
+let gameView = 'tiles';
+try { gameView = localStorage.getItem('gg-view') === 'list' ? 'list' : 'tiles'; } catch { /* default tiles */ }
+let gameQuery = '';
 async function categoryPage(cat) {
   const my = renderSeq;
-  const games = await gamesOf(cat.id);
+  const games = (await gamesOf(cat.id)).sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: 'base' }));
   const players = await db.all('players');
   const photos = await db.all('photos');
   if (stale(my)) return;
   trail([{ t: 'Home', h: '/' }, { t: cat.name }], '/');
-  const rows = games.map((g) => {
+  const info = (g) => {
     const ps = players.filter((p) => p.gameId === g.id);
     const lead = leaderOf(ps);
-    const ph = lead?.best.photoId ? photos.find((x) => x.id === lead.best.photoId) : null;
-    const art = ph ? `<div class="dr-row__art dr-row__art--disc"><img src="${photoUrl(ph)}" alt=""></div>` : `<div class="gg-disc">${esc(initials(g.name))}</div>`;
+    const ph = (g.photoId && photos.find((x) => x.id === g.photoId)) || (lead?.best.photoId ? photos.find((x) => x.id === lead.best.photoId) : null);
     const meta = lead ? `${esc(lead.player.name)} · ${fmtScore(lead.best.value)}` : (ps.length ? 'No scores yet' : 'Nobody on it yet');
+    return { ps, lead, ph, meta };
+  };
+  const tile = (g, i) => {
+    const { ph, meta } = info(g);
+    const face = ph ? `<img src="${photoUrl(ph)}" alt="">` : `<div class="dr-cover--type" data-tone="${tone(i)}" style="position:absolute;inset:0"><span>${esc(g.name)}</span></div>`;
+    return `<button class="dr-tile" data-go="/g/${g.id}"><div class="dr-cover">${face}</div>
+      <div class="dr-tile__title">${esc(g.name)}</div><div class="dr-tile__meta">${meta}</div></button>`;
+  };
+  const row = (g) => {
+    const { ps, lead, ph, meta } = info(g);
+    const art = ph ? `<div class="dr-row__art dr-row__art--disc"><img src="${photoUrl(ph)}" alt=""></div>` : `<div class="gg-disc">${esc(initials(g.name))}</div>`;
     return `<div class="dr-row ${lead ? '' : 'is-empty'}" data-go="/g/${g.id}" role="button" tabindex="0" aria-label="${esc(g.name)}">${art}
       <div class="dr-row__text"><div class="dr-row__title">${esc(g.name)}</div><div class="dr-row__meta">${meta}</div></div>
       <div class="dr-row__end">${ps.length ? plural(ps.length, 'player') : ''}</div></div>`;
-  });
+  };
+  const listHtml = () => {
+    const q = gameQuery.trim().toLowerCase();
+    const shown = q ? games.filter((g) => g.name.toLowerCase().includes(q)) : games;
+    if (!games.length) return `<div class="gg-empty"><p class="dr-body-lg">No games in ${esc(cat.name)} yet. Add the first one and the scores go on it.</p></div>`;
+    if (!shown.length) return `<div class="gg-empty"><p class="dr-body-lg">Nothing called “${esc(gameQuery.trim())}” in ${esc(cat.name)}.</p></div>`;
+    return gameView === 'list' ? `<div class="dr-list">${shown.map(row).join('')}</div>` : `<div class="dr-shelf">${shown.map((g) => tile(g, games.indexOf(g))).join('')}</div>`;
+  };
   if (!paint(my, `<div class="gg-stack">
     <div><div class="dr-eyebrow">${games.length ? plural(games.length, 'game') : 'Empty so far'}</div>
       <div class="gg-titlerow"><h1 class="dr-title-xl" id="title">${esc(cat.name)}</h1><button class="gg-pencil" id="rename" aria-label="Rename the category">✎</button></div></div>
-    ${games.length ? `<div class="dr-list">${rows.join('')}</div>`
-      : `<div class="gg-empty"><p class="dr-body-lg">No games in ${esc(cat.name)} yet. Add the first one and the scores go on it.</p></div>`}
+    ${games.length ? `<div class="gg-bar gg-bar--between gg-tools">
+      <input class="dr-input dr-input--search gg-grow" id="search" type="search" placeholder="Find a game" value="${esc(gameQuery)}" autocomplete="off" aria-label="Find a game">
+      <div class="gg-seg" role="group" aria-label="View"><button class="${gameView === 'tiles' ? 'is-on' : ''}" data-view="tiles">Tiles</button><button class="${gameView === 'list' ? 'is-on' : ''}" data-view="list">List</button></div>
+    </div>` : ''}
+    <div id="games">${listHtml()}</div>
     <div class="gg-bar"><button class="dr-btn" data-go="/c/${cat.id}/new">Add a game</button></div>
     <div class="gg-bar gg-endbar"><button class="dr-btn dr-btn--ghost dr-btn--sm" id="delete">Delete ${esc(cat.name)}</button></div>
   </div>`)) return;
   bindGo();
+  const redraw = () => { freeUrls(); $('#games').innerHTML = listHtml(); bindGo(); };
+  const search = $('#search');
+  if (search) search.oninput = () => { gameQuery = search.value; redraw(); };
+  $$('[data-view]').forEach((b) => { b.onclick = () => { gameView = b.dataset.view; try { localStorage.setItem('gg-view', gameView); } catch { /* fine */ } $$('[data-view]').forEach((x) => x.classList.toggle('is-on', x === b)); redraw(); }; });
   $('#rename').onclick = () => renameInline($('#title'), cat.name, async (v) => { cat.name = v; await touch('categories', cat); render(); });
   $('#delete').onclick = async () => {
     const n = games.length;
@@ -292,7 +324,7 @@ async function gamePage(cat, game) {
   trail([{ t: 'Home', h: '/' }, { t: cat.name, h: `/c/${cat.id}` }, { t: game.name }], `/c/${cat.id}`);
   const lead = leaderOf(players);
   const pic = (id) => (id ? photos.find((x) => x.id === id) : null);
-  const leadPic = lead ? pic(lead.best.photoId) : null;
+  const gamePic = pic(game.photoId);
   const when = (s) => [s.date ? fmtDate(s.date) : '', s.where].filter(Boolean).join(' · ');
   const ranked = players.map((p) => ({ p, best: bestOf(p) })).sort((a, b) => (b.best?.value ?? -1) - (a.best?.value ?? -1));
   const tiles = ranked.map(({ p, best }, i) => {
@@ -304,11 +336,17 @@ async function gamePage(cat, game) {
       <div class="dr-tile__meta">${best ? `${fmtScore(best.value)}${best.date ? ' · ' + fmtDate(best.date) : ''}` : 'No score yet'}</div>
     </button>`;
   });
+  // Score photos on this game, to offer as the game's picture.
+  const scorePics = [];
+  for (const p of players) for (const s of p.scores || []) if (s.photoId && pic(s.photoId)) scorePics.push({ k: s.photoId, label: `Use ${p.name}’s ${fmtScore(s.value)} photo` });
+  const picLabel = gamePic ? `Change the picture of ${esc(game.name)}` : `Add a picture of ${esc(game.name)}`;
+  const picFace = gamePic ? `<img src="${photoUrl(gamePic)}" alt="">` : `<span class="gg-gamepic__empty"><span style="font-size:36px">🖼️</span><b>Add a picture of ${esc(game.name)}</b><span class="dr-caption">It shows here and on the tile.</span></span>`;
   if (!paint(my, `<div class="gg-stack">
     <div><div class="dr-eyebrow">${esc(cat.name)}</div>
       <div class="gg-titlerow"><h1 class="dr-title-xl" id="title">${esc(game.name)}</h1><button class="gg-pencil" id="rename" aria-label="Rename the game">✎</button></div></div>
+    <button class="dr-cover gg-gamepic ${gamePic ? 'has-picture' : ''}" id="gamePic" aria-label="${picLabel}">${picFace}</button>
+    <input type="file" accept="image/*" id="gamePicIn" hidden aria-label="Picture of the game">
     ${lead ? `<section class="dr-panel gg-hero">
-      ${leadPic ? `<div class="dr-cover gg-hero__pic"><img src="${photoUrl(leadPic)}" alt=""></div>` : ''}
       <div class="dr-eyebrow">High score</div>
       <div class="dr-big-number">${fmtScore(lead.best.value)}</div>
       <div class="gg-hero__who">${esc(lead.player.name)}</div>
@@ -321,8 +359,30 @@ async function gamePage(cat, game) {
   <button class="dr-btn dr-btn--icon gg-fab" data-go="/g/${game.id}/add" aria-label="Add a player">+</button>`)) return;
   bindGo();
   $('#rename').onclick = () => renameInline($('#title'), game.name, async (v) => { game.name = v; await touch('games', game); render(); });
+  const picIn = $('#gamePicIn');
+  // A picture of its own is deleted when replaced; a score's photo is only pointed at, never deleted from here.
+  const ownedPic = () => (game.photoId && !scorePics.some((x) => x.k === game.photoId) ? game.photoId : null);
+  const setPic = async (photoId) => { const old = ownedPic(); game.photoId = photoId; await touch('games', game); if (old && old !== photoId) await db.del('photos', old); render(); };
+  picIn.onchange = async () => {
+    const f = picIn.files[0]; if (!f) return;
+    const shrunk = await shrink(f);
+    const ph = { id: uid(), gameId: game.id, blob: shrunk.blob, w: shrunk.w, h: shrunk.h, bytes: shrunk.blob.size, createdAt: Date.now() };
+    await db.put('photos', ph);
+    await setPic(ph.id);
+    toast(`Picture added to ${game.name}.`);
+  };
+  $('#gamePic').onclick = async () => {
+    if (!scorePics.length && !gamePic) { picIn.click(); return; }
+    const choices = [{ k: 'library', label: 'From your photos' }, ...scorePics.filter((x) => x.k !== game.photoId)];
+    if (gamePic) choices.push({ k: 'none', label: 'Remove the picture', danger: true });
+    const k = await sheet(`A picture of ${game.name}`, choices);
+    if (!k) return;
+    if (k === 'library') { picIn.click(); return; }
+    if (k === 'none') { await setPic(null); toast('Picture removed.'); return; }
+    await setPic(k); toast(`Picture set for ${game.name}.`);
+  };
   $('#delete').onclick = async () => {
-    if (!(await confirmSheet(`Delete ${game.name} and everyone's scores on it?`, `Yes, delete ${game.name}`))) return;
+    if (!(await confirmSheet(`Delete ${game.name} and everyone’s scores on it?`, `Yes, delete ${game.name}`))) return;
     await deleteGame(game); toast(`${game.name} deleted.`); go(`/c/${cat.id}`);
   };
 }
@@ -430,7 +490,7 @@ function bindScoreForm(game, player, s) {
     if (!s.id) { s = { id: uid(), value, date: '', where: '', photoId: null, createdAt: Date.now() }; player.scores.push(s); }
     s.value = value; s.date = dateIn.value || ''; s.where = whereIn.value.trim();
     if (newPhoto) {
-      if (s.photoId) await db.del('photos', s.photoId);
+      if (s.photoId && s.photoId !== game.photoId) await db.del('photos', s.photoId);
       const ph = { id: uid(), gameId: game.id, blob: newPhoto.blob, w: newPhoto.w, h: newPhoto.h, bytes: newPhoto.blob.size, createdAt: Date.now() };
       await db.put('photos', ph); s.photoId = ph.id;
     }
@@ -441,7 +501,7 @@ function bindScoreForm(game, player, s) {
   const rm = $('#removeScore');
   if (rm) rm.onclick = async () => {
     if (!(await confirmSheet(`Remove ${fmtScore(s.value)}?`, 'Yes, remove it'))) return;
-    if (s.photoId) await db.del('photos', s.photoId);
+    if (s.photoId && s.photoId !== game.photoId) await db.del('photos', s.photoId);
     player.scores = player.scores.filter((x) => x.id !== s.id);
     await touch('players', player);
     back();
@@ -450,7 +510,7 @@ function bindScoreForm(game, player, s) {
 
 // ---------- settings, backup, import ----------
 const HOW_IT_WORKS = [
-  ['Categories and games', 'Home holds your categories, like Pinball. A category holds its games, like each cabinet. A game holds one tile per player.'],
+  ['Categories and games', 'Home holds your categories, like Pinball. A category shows its games as tiles, A to Z, with a search box and a list view if you like. A game holds one tile per player, and can carry a picture of itself.'],
   ['Scores', 'Tap + on a game to add a player, then their score, with the date, where it was and a photo of it. A player can keep every score they ever got; the best one shows outside.'],
   ['Back up', 'Back up makes one file with everything in it, pictures included, for Files, iCloud, a text, anywhere. Import a backup brings it back onto a phone.'],
   ['Yours', 'Everything stays on this phone until you send it. Nothing is uploaded, nothing needs an account.'],
@@ -532,6 +592,7 @@ async function importBackup(file) {
     try { const blob = b64ToBlob(ph.data, type); photos.push({ id, gameId: gid, blob, w: Number(ph.w) || 0, h: Number(ph.h) || 0, bytes: blob.size, createdAt: now }); } catch { /* skip a bad picture */ }
   }
   const photoIds = new Set(photos.map((p) => p.id));
+  for (const g of pack.games || []) { const mine = games.find((x) => x.id === safeId(g.id)); const pid = safeId(g.photoId); if (mine) mine.photoId = pid && photoIds.has(pid) ? pid : null; }
   for (const p of pack.players || []) {
     const id = safeId(p.id), gid = safeId(p.gameId);
     if (!id || !gid || !gameIds.has(gid)) continue;

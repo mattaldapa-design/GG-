@@ -22,7 +22,7 @@ README-STANDARD.md   Starter Dough version 5
 CLAUDE.md            Starter Dough, as committed in 9c1fcb3
 reference/           Matt's pinball notes (text and screenshot) and his Stern
                      Insider scores (PDF and a table read from it), 2026-10-18
-app/                 the first build, version 1: index.html, sw.js,
+app/                 the build, version 2: index.html, sw.js,
                      manifest.webmanifest, css/app.css, js/app.js, js/db.js,
                      js/util.js, js/seed.js, written by the agent;
                      css/darkroom-tokens.css and css/darkroom.css copied from
@@ -53,6 +53,13 @@ uses the cabinet's real name (Theatre of Magic, Ghostbusters, Indiana Jones,
 Addams Family, Monster Mash); "5,948000" was read as 5,948,000. Those are the
 agent's readings, and every name can be changed in the app.
 
+**Version 2, the same day (I4):** a category shows its games as tiles, A to
+Z, with "Find a game" at the top and a Tiles / List switch the phone
+remembers; a game carries a picture of itself, set from the photo library or
+from a score photo already on it, shown at the top of its page and on its
+tile (a tile with no picture of its own shows the leader's score photo, else
+the name). Removing a score keeps its photo if the game is using it.
+
 **Verified 2026-10-18** by the agent in the desktop app's built-in browser
 at 375×812, served by the launch.json server: first open seeded 1 category
 and 31 games → Pinball lists all 31 with the leader on each row → Spider-Man
@@ -63,7 +70,13 @@ played?" with a new name Sam went straight to his first score → a synthetic
 800×600 picture attached, was stored as an 18 KB JPEG and showed on the
 score row and on Sam's tile → renaming Pinball in place changed the title
 and the trail and back again → the service worker reached "activated" with
-the shell and fonts cached. No console errors.
+the shell and fonts cached. No console errors. **Version 2, same browser:**
+Pinball opened as 31 tiles A to Z (Addams Family first) → "spid" in the
+search left one → List showed it as a row, and all 31 with the search
+cleared; the choice persisted → a synthetic 1200×750 picture attached to
+Spider-Man showed at the top of its page and on its tile → tapping the
+picture offered "From your photos" and "Remove the picture"; removing it
+cleared the slot and deleted the stored photo. No console errors.
 
 **Not verified:** anything on an iPhone (home-screen install, the photo
 picker, the share sheet for backups); the backup file itself was not opened
@@ -224,6 +237,31 @@ struck.
   **Settled 2026-10-18** by Matt's confirmation. What it means in the build
   will be recorded as Decisions.
 
+- **I4 — A category shows its games as tiles, alphabetical by default,
+  with a search box at the top and a list view to switch to; a game can
+  carry a picture of itself, shown at the top of its page and on its tile.**
+  *(2026-10-18, drafted by the agent.)* **Confirmed by Matt 2026-10-18**,
+  shown the entry: *"Yes, I4 is what I want. Build it."* Matt, after the
+  first build: *"when I go into pinball, there it's a list view. I
+  think I want it to be tiles. Um, the tiles can be listed alphabetically, I
+  think, as a default, but I would like to be able to search for the like a
+  game at the top, so that way I can just like go directly to it as my list
+  gets longer. [...] I think it's a little boring just having it as a list
+  view from there. I think we should be able to have a, a list view and a
+  tile view from, from that. And that way I can also, like when I open up
+  the the cabinet itself, um, I can also attach a picture. Um, so like of of
+  it to the game itself. If I want to have like a little visual image of
+  like, let's say Spider-Man at the top. And that way the tile in, in the
+  uh, in the pinball folder shows the um, the cabinet that I'm I'm referring
+  to. This can also be the same photo that I add to like my own score um, on
+  my own little tile."* The agent's reading of the last sentence: the game's
+  picture can be chosen from a photo already on one of its scores, as well
+  as from the photo library; it is not that every score photo becomes the
+  game's picture.
+
+  **Settled 2026-10-18:** confirmed, and built as version 2 (see Current
+  state).
+
 ## Decisions
 
 Dated, append-only. Each says what was chosen, the alternative, why, who
@@ -287,6 +325,7 @@ decided, where it is enforced, and what it **serves**.
   a second line for Matt; the app has no iteration field. **Serves →** I3.
 
 **Open decisions — waiting on Matt, oldest first:**
+
 
 - *2026-10-18* — **Eleven Stern cards still unnamed** (cards 10 to 22 in
   `reference/stern-insider-scores-2026-10-18.md`, less card 19, which is
