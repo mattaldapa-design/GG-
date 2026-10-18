@@ -71,6 +71,32 @@ body { min-height: 100%; overscroll-behavior-y: none; }
 .gg-gamepic__empty { display: grid; gap: 6px; justify-items: center; color: var(--cream-dim); padding: 20px; }
 .gg-gamepic__empty b { font-family: var(--font-display); font-size: 19px; color: var(--cream); }
 
+/* Category kind, chosen once */
+.gg-kinds { display: grid; gap: 10px; }
+@media (min-width: 520px) { .gg-kinds { grid-template-columns: 1fr 1fr; } }
+.gg-kind { display: grid; gap: 4px; text-align: left; padding: 14px 16px; border: 0; border-radius: var(--radius-lg); background: var(--room-100); color: var(--cream); font: inherit; cursor: pointer; box-shadow: 0 0 0 1px var(--line); transition: box-shadow var(--dur-quick), background var(--dur-quick); }
+.gg-kind b { font-family: var(--font-display); font-size: 18px; }
+.gg-kind span { color: var(--cream-dim); font-size: 16px; }
+.gg-kind.is-on { background: var(--room-200); box-shadow: 0 0 0 2px var(--accent); }
+
+/* Totals on a games-played game */
+.dr-big-number small { font-family: var(--font-display); font-size: 20px; font-weight: 700; color: var(--cream-dim); }
+.gg-totals { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px 16px; }
+@media (min-width: 520px) { .gg-totals { grid-template-columns: repeat(4, 1fr); } }
+.gg-totals > div { display: grid; gap: 2px; }
+.gg-totals b { font-family: var(--font-display); font-size: 24px; font-weight: 700; line-height: 1.1; font-variant-numeric: tabular-nums; }
+.gg-totals span { color: var(--cream-dim); font-size: 16px; }
+.dr-textarea { resize: vertical; min-height: 56px; }
+
+/* A round's players in the form */
+.gg-players { display: grid; gap: 8px; }
+.gg-prow { display: grid; grid-template-columns: 1fr 112px auto auto; align-items: center; gap: 8px; }
+.gg-prow__name { font-family: var(--font-display); font-weight: 700; font-size: 18px; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.gg-prow__score { padding: 10px 12px; font-variant-numeric: tabular-nums; }
+.gg-prow__won { padding: 10px 14px; font-size: 16px; }
+.gg-x { width: 36px; height: 36px; border-radius: var(--radius-disc); border: 0; background: var(--room-200); color: var(--cream-dim); font-size: 22px; line-height: 1; cursor: pointer; }
+.gg-x:hover { color: var(--cream); background: var(--room-100); }
+
 /* Discs with initials, for rows */
 .gg-disc { width: 56px; height: 56px; border-radius: var(--radius-disc); display: grid; place-items: center; background: var(--kind, var(--room-200)); color: var(--on-kind, var(--cream)); font-family: var(--font-display); font-weight: 800; font-size: 20px; letter-spacing: -0.02em; }
 .gg-disc--big { width: 72px; height: 72px; font-size: 26px; }

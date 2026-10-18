@@ -1,6 +1,6 @@
-// IndexedDB wrapper. Stores: categories, games, players, photos, meta.
+// IndexedDB wrapper. Stores: categories, games, players, photos, nights, meta.
 const NAME = 'gg';
-const VERSION = 1;
+const VERSION = 2;
 let opening = null;
 
 function open() {
@@ -9,14 +9,14 @@ function open() {
     const r = indexedDB.open(NAME, VERSION);
     r.onupgradeneeded = () => {
       const d = r.result;
-      d.createObjectStore('categories', { keyPath: 'id' });
-      const games = d.createObjectStore('games', { keyPath: 'id' });
-      games.createIndex('categoryId', 'categoryId');
-      const players = d.createObjectStore('players', { keyPath: 'id' });
-      players.createIndex('gameId', 'gameId');
-      const photos = d.createObjectStore('photos', { keyPath: 'id' });
-      photos.createIndex('gameId', 'gameId');
-      d.createObjectStore('meta', { keyPath: 'key' });
+      const has = (n) => d.objectStoreNames.contains(n);
+      if (!has('categories')) d.createObjectStore('categories', { keyPath: 'id' });
+      if (!has('games')) d.createObjectStore('games', { keyPath: 'id' }).createIndex('categoryId', 'categoryId');
+      if (!has('players')) d.createObjectStore('players', { keyPath: 'id' }).createIndex('gameId', 'gameId');
+      if (!has('photos')) d.createObjectStore('photos', { keyPath: 'id' }).createIndex('gameId', 'gameId');
+      if (!has('meta')) d.createObjectStore('meta', { keyPath: 'key' });
+      // version 2 (I6): nights played together, one record per night with its rounds inside
+      if (!has('nights')) d.createObjectStore('nights', { keyPath: 'id' }).createIndex('gameId', 'gameId');
     };
     r.onsuccess = () => resolve(r.result);
     r.onerror = () => reject(r.error);

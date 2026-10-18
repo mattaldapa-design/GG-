@@ -52,3 +52,5 @@ export const SEED_STERN = [
   ['Teenage Mutant Ninja Turtles', [12206150]],
   ['Deadpool', [161184280]],
 ];
+// Matt's board game (I6): "Catan is my game". A "games played" category, empty until the first night.
+export const SEED_BOARD = { category: 'Board games', games: ['Catan'] };

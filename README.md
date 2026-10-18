@@ -22,7 +22,7 @@ README-STANDARD.md   Starter Dough version 5
 CLAUDE.md            Starter Dough, as committed in 9c1fcb3
 reference/           Matt's pinball notes (text and screenshot) and his Stern
                      Insider scores (PDF and a table read from it), 2026-10-18
-app/                 the build, version 3: index.html, sw.js,
+app/                 the build, version 4: index.html, sw.js,
                      manifest.webmanifest, css/app.css, js/app.js, js/db.js,
                      js/util.js, js/seed.js, written by the agent;
                      css/darkroom-tokens.css and css/darkroom.css copied from
@@ -65,6 +65,33 @@ the name). Removing a score keeps its photo if the game is using it.
 **Version 3, same day (I5):** the home-screen icon is the die, after four
 drawings with Matt. A phone that already has GG! on its home screen keeps
 the old icon until the app is removed and added again.
+
+**Version 4, same day (I6, game nights):** a category is made as "High
+scores" or "Games played" (Decision of 2026-10-18). In a games-played
+category a game's page carries Matt's totals at the top under the name from
+Settings (rounds won of rounds played, nights, best winning score, people
+played with), a "How scoring works" note, and one tile per night. Tap + on
+a night: when and where, then the round: who played (chips of known names,
+or a new one), a score each if kept, "Won" marked by hand or taken as the
+highest score. A night can hold several rounds; the next round starts with
+the last round's players. The seed adds a Board games category with Catan,
+empty. Backups carry nights; a phone on version 3 upgrades its database in
+place. The home-screen icon is unchanged. A phone that already has GG! will
+not get the seeded Board games category (seeding runs once); Matt adds it
+with "Add a category" → Games played.
+
+**Verified 2026-10-18, version 4**, same browser, same size: a fresh open
+showed Pinball (43 games) and Board games (1 game) → Catan opened with
+"Matt on Catan", 0 won of 0, and the scoring note → + made a night dated
+today at "Jordan’s place" and went straight to round 1 → Matt and Jordan
+from the chips, Sam typed, scores 10, 8, 7 → saved as "Matt won · Matt 10 ·
+Jordan 8 · Sam 7" with no winner marked by hand → the next round opened
+with the same three people; 6, 9, 5 made "Jordan won" → Catan's page read
+1 won of 2, 2 games played, 1 night, best winning score 10, 2 people, and
+the night's tile said "2 rounds · Matt 1, Jordan 1" → "Add a category" with
+Games played chosen made a nights category → a database built at version 1
+with one cabinet and one score opened at version 2 with the nights store
+added and the cabinet intact. No console errors.
 
 **Published 2026-10-18:** workflow run 1 on commit `6951d49` succeeded
 16 seconds after the first push, without anyone switching Pages on by hand
@@ -336,6 +363,48 @@ struck.
   faces); the drawing script is not kept, the PNGs in `app/icons/` are the
   artwork.
 
+- **I6 — For a board game, each time it is played is its own tile on the
+  game's page: the date, who played, who won. The top of the page keeps
+  Matt's totals: how many times he has played it, how many he has won, and
+  the highest score he has won with. Adding a night adds a tile and the
+  totals follow.** *(2026-10-18, drafted by the agent; not yet confirmed by
+  Matt.)* Matt, choosing game nights as the next piece: *"in board games, I
+  go into board games and then it has Catan as the uh, just as as the tile
+  there. And then when I go into Catan, um, then I have the um, the each
+  game is its own moment. So so um, that's where you'll have like the um,
+  the date on that tile that it was played, who played, the game, and then
+  maybe who won that game. And then I'm saying that, like, if I go into
+  Catan at the top, it would probably have, like, my total games that I
+  played of Catan that I have entered in there and how many I've won. Um,
+  and maybe my highest score. Uh, that I've won with. Uh, and then, like, I
+  can just add more of the each time I play Catan with people, I can just
+  add that to the um, as a as a new little tile. And it'll update that top
+  information."* So a board game's tiles are nights, where a pinball
+  cabinet's tiles are players; which way a game works is a choice the
+  agent has asked about (per game, or per category).
+
+  *Added 2026-10-18*, choosing per category: *"with board games, you know,
+  it, it's it could be a little nuanced because like there are some board
+  games where you you know, you usually have a winner at the end, whether
+  you win or you lost. But sometimes one night is is um played over the
+  course of a couple of games as well. So you could play multiple rounds in
+  a night, uh, and and have multiple winners on a night. As well, so that
+  should be something that can be captured. But really, what I want, like
+  at the you know, this is for me, and Catan is my game that I uh made. So,
+  like, it's gonna have my scores at the very top of how many games I
+  played, you know, maybe the number of different people I played with. Um,
+  um, but uh, you know, each each tile can have uh, you know, will really
+  focus on that night. And uh, like the the scoring for that game in, in
+  particular. Which which sometimes I might have to explain how the scoring
+  works. uh, on a game, because um, um, you know, scores can be very, very
+  high in some some board games, and then they could be you know, you could
+  just they could just be one zero uh, on another type of game."* The
+  agent's readings: "games I played" counts rounds, not nights; the
+  explanation of scoring is a note on the game, written once.
+
+  **Settled 2026-10-18** by the Decision below on categories; built as
+  version 4.
+
 ## Decisions
 
 Dated, append-only. Each says what was chosen, the alternative, why, who
@@ -398,6 +467,16 @@ decided, where it is enforced, and what it **serves**.
   not fleshed out yet. Enforced: the seed puts that score on Walking Dead as
   a second line for Matt; the app has no iteration field. **Serves →** I3.
 
+- **2026-10-18 — A category is either "high scores" or "games played",
+  chosen when it is made, and every game in it works that way.** Matt,
+  asked whether the choice is per game or per category: *"Yeah, I think
+  category is the is what I'm imagining."* Alternative: per game, asked
+  each time a game is added. Why it lost: one fewer question per game, and
+  it matches how Matt described it (pinball one way, board games the
+  other). Recommended by the agent, chosen by Matt. Enforced: `kind` on a
+  category (`scores` or `nights`), asked on the "Add a category" page;
+  Pinball from the seed is `scores`. **Serves →** I6, Goal.
+
 **Open decisions — waiting on Matt, oldest first:**
 
 None.
@@ -406,7 +485,7 @@ None.
 
 - *2026-10-18* — **Game nights played together** (who played, the scores,
   who won, the date). Part of the Goal; after the first version, by the
-  Decision of 2026-10-18 on scope.
+  Decision of 2026-10-18 on scope. Taken up the same day as I6.
 - *2026-10-18* — **Live scoring** for a game played in the moment, such as
   pickleball. Part of the Goal; after game nights, by the same Decision.
 - *2026-10-18* — **A friend sharing their score into Matt's copy of a
