@@ -129,6 +129,23 @@ body { min-height: 100%; overscroll-behavior-y: none; }
 .gg-lp__add { padding: 12px 18px; }
 .gg-lp__btns .dr-btn--sm { padding: 10px 14px; }
 
+/* Symbols on tiles (I11): cream on a tone, a darker edge of the same tone */
+[data-tone] { --edge: color-mix(in srgb, var(--kind, var(--accent)) 55%, black); }
+.gg-symtile { display: grid; place-items: center; padding: 0; }
+.gg-sym { width: 62%; height: 62%; color: var(--cream); display: block; }
+.gg-gamepic__sym { width: 72px; height: 72px; border-radius: var(--radius-md); background: var(--kind, var(--accent)); display: grid; place-items: center; }
+.gg-gamepic__sym .gg-sym { width: 70%; height: 70%; }
+.gg-face { width: 72px; height: 72px; flex: none; border: 0; padding: 0; border-radius: var(--radius-disc); overflow: hidden; background: var(--room-200); cursor: pointer; display: grid; place-items: center; }
+.gg-face img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.gg-face--sym { background: var(--kind, var(--accent)); }
+.gg-face .gg-sym { width: 66%; height: 66%; }
+.gg-symgrid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
+@media (min-width: 520px) { .gg-symgrid { grid-template-columns: repeat(6, 1fr); } }
+.gg-symbtn { aspect-ratio: 1; border: 0; padding: 0; border-radius: var(--radius-md); background: var(--kind, var(--accent)); display: grid; place-items: center; cursor: pointer; box-shadow: var(--shadow-rest); transition: transform var(--dur-move) var(--ease-out), box-shadow var(--dur-move) var(--ease-out); }
+.gg-symbtn:hover { transform: translateY(-3px); box-shadow: var(--shadow-lift); }
+.gg-symbtn.is-on { box-shadow: 0 0 0 3px var(--cream), var(--shadow-rest); }
+.gg-symbtn .gg-sym { width: 64%; height: 64%; }
+
 /* Discs with initials, for rows */
 .gg-disc { width: 56px; height: 56px; border-radius: var(--radius-disc); display: grid; place-items: center; background: var(--kind, var(--room-200)); color: var(--on-kind, var(--cream)); font-family: var(--font-display); font-weight: 800; font-size: 20px; letter-spacing: -0.02em; }
 .gg-disc--big { width: 72px; height: 72px; font-size: 26px; }

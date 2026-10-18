@@ -2,8 +2,9 @@
 import * as db from './db.js';
 import { esc, uid, todayIso, fmtDate, parseScore, fmtScore, initials, safeId, safeText, bestOf, leaderOf } from './util.js';
 import { SEED_CATEGORY, SEED_PLAYERS, SEED_GAMES, SEED_STERN, SEED_BOARD } from './seed.js';
+import { SYMBOLS, symbolFor, randomSymbol, symbolSvg } from './symbols.js';
 
-const APP_VERSION = 8; // keep in step with VERSION in sw.js
+const APP_VERSION = 9; // keep in step with VERSION in sw.js
 const $ = (s, r = document) => r.querySelector(s);
 const $$ = (s, r = document) => [...r.querySelectorAll(s)];
 const app = $('#app');
@@ -27,6 +28,8 @@ const bindGo = () => $$('[data-go]').forEach((el) => {
   el.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); go(el.dataset.go); } });
 });
 const tone = (i) => i % 4;
+// A tile with no picture shows its symbol on a tone (I11).
+const symFace = (thing, i) => `<div class="dr-cover--type gg-symtile" data-tone="${tone(i)}" style="position:absolute;inset:0">${symbolSvg(symbolFor(thing.symbol, thing.id))}</div>`;
 const plural = (n, w) => `${n} ${w}${n === 1 ? '' : 's'}`;
 
 // A bottom sheet of choices. Resolves with the chosen key, or null.
@@ -80,6 +83,7 @@ async function gamesOf(categoryId) { return (await db.where('games', 'categoryId
 async function deletePlayer(p) {
   const game = await db.get('games', p.gameId);
   for (const s of p.scores || []) if (s.photoId && s.photoId !== game?.photoId) await db.del('photos', s.photoId);
+  if (p.photoId && p.photoId !== game?.photoId) await db.del('photos', p.photoId);
   await db.del('players', p.id);
 }
 async function deleteGame(g) {
@@ -190,6 +194,7 @@ async function render() {
     if (!p.length) return await home();
     if (p[0] === 'new') return newCategory();
     if (p[0] === 'settings') return await settingsPage();
+    if (p[0] === 'sym') return await symbolPage(p[1], p[2]);
     if (p[0] !== 'c' || p[1] !== lastCat) gameQuery = '';
     lastCat = p[0] === 'c' ? p[1] : null;
     if (p[0] === 'c') {
@@ -243,7 +248,7 @@ async function home() {
   const tiles = cats.map((c, i) => {
     const n = games.filter((g) => g.categoryId === c.id).length;
     return `<button class="dr-tile" data-go="/c/${c.id}">
-      <div class="dr-cover dr-cover--type" data-tone="${tone(i)}"><span>${esc(c.name)}</span><span class="dr-badge gg-cover-badge">${plural(n, 'game')}</span></div>
+      <div class="dr-cover">${symFace(c, i)}<span class="dr-badge gg-cover-badge">${plural(n, 'game')}</span></div>
       <div class="dr-tile__title">${esc(c.name)}</div>
       <div class="dr-tile__meta">${n ? plural(n, 'game') : 'Nothing in here yet'}</div>
     </button>`;
@@ -282,7 +287,7 @@ function newCategory() {
     const name = input.value.trim(); if (!name) { input.focus(); return; }
     const n = (await db.all('categories')).length;
     const now = Date.now();
-    const c = { id: uid(), name, kind, order: n, createdAt: now, updatedAt: now };
+    const c = { id: uid(), name, kind, symbol: randomSymbol(), order: n, createdAt: now, updatedAt: now };
     await db.put('categories', c);
     go(`/c/${c.id}`);
   };
@@ -319,7 +324,7 @@ async function categoryPage(cat) {
   };
   const tile = (g, i) => {
     const { ph, meta } = info(g);
-    const face = ph ? `<img src="${photoUrl(ph)}" alt="">` : `<div class="dr-cover--type" data-tone="${tone(i)}" style="position:absolute;inset:0"><span>${esc(g.name)}</span></div>`;
+    const face = ph ? `<img src="${photoUrl(ph)}" alt="">` : symFace(g, i);
     return `<button class="dr-tile" data-go="/g/${g.id}"><div class="dr-cover">${face}</div>
       <div class="dr-tile__title">${esc(g.name)}</div><div class="dr-tile__meta">${meta}</div></button>`;
   };
@@ -346,7 +351,7 @@ async function categoryPage(cat) {
     </div>` : ''}
     <div id="games">${listHtml()}</div>
     <div class="gg-bar"><button class="dr-btn" data-go="/c/${cat.id}/new">Add a game</button>${kindOf(cat) !== 'nights' && games.length ? `<button class="dr-btn dr-btn--quiet" data-go="/c/${cat.id}/bulk">Add a person’s scores</button>` : ''}${games.length ? `<button class="dr-btn dr-btn--ghost" id="share">Share the list</button>` : ''}</div>
-    <div class="gg-bar gg-endbar"><button class="dr-btn dr-btn--ghost dr-btn--sm" id="kind">Keeps: ${KIND_LABEL[kindOf(cat)]} · change</button><button class="dr-btn dr-btn--ghost dr-btn--sm" id="delete">Delete ${esc(cat.name)}</button></div>
+    <div class="gg-bar gg-endbar"><button class="dr-btn dr-btn--ghost dr-btn--sm" data-go="/sym/c/${cat.id}">Symbol</button><button class="dr-btn dr-btn--ghost dr-btn--sm" id="kind">Keeps: ${KIND_LABEL[kindOf(cat)]} · change</button><button class="dr-btn dr-btn--ghost dr-btn--sm" id="delete">Delete ${esc(cat.name)}</button></div>
   </div>`)) return;
   bindGo();
   $('#kind').onclick = async () => {
@@ -454,7 +459,7 @@ function newGame(cat) {
     const name = input.value.trim(); if (!name) { input.focus(); return; }
     const n = (await gamesOf(cat.id)).length;
     const now = Date.now();
-    const g = { id: uid(), categoryId: cat.id, name, order: n, createdAt: now, updatedAt: now };
+    const g = { id: uid(), categoryId: cat.id, name, symbol: randomSymbol(), order: n, createdAt: now, updatedAt: now };
     await db.put('games', g);
     go(`/g/${g.id}`);
   };
@@ -474,8 +479,8 @@ async function gamePage(cat, game) {
   const when = (s) => [s.date ? fmtDate(s.date) : '', s.where].filter(Boolean).join(' · ');
   const ranked = players.map((p) => ({ p, best: bestOf(p) })).sort((a, b) => (b.best?.value ?? -1) - (a.best?.value ?? -1));
   const tiles = ranked.map(({ p, best }, i) => {
-    const ph = best ? pic(best.photoId) : null;
-    const face = ph ? `<img src="${photoUrl(ph)}" alt="">` : `<div class="dr-cover--type" data-tone="${tone(players.indexOf(p))}" style="position:absolute;inset:0"><span>${esc(p.name)}</span></div>`;
+    const ph = pic(p.photoId) || (best ? pic(best.photoId) : null);
+    const face = ph ? `<img src="${photoUrl(ph)}" alt="">` : symFace(p, players.indexOf(p));
     return `<button class="dr-tile" data-go="/g/${game.id}/p/${p.id}">
       <div class="dr-cover">${face}${best ? `<span class="gg-cover-rank">#${i + 1}</span>` : ''}</div>
       <div class="dr-tile__title">${esc(p.name)}</div>
@@ -512,7 +517,7 @@ async function gamePage(cat, game) {
 // The game's own picture (I4): a slot at the top of its page, set from the library or from a photo already on the game.
 function gamePicHtml(game, gamePic) {
   const label = gamePic ? `Change the picture of ${esc(game.name)}` : `Add a picture of ${esc(game.name)}`;
-  const face = gamePic ? `<img src="${photoUrl(gamePic)}" alt="">` : `<span class="gg-gamepic__empty"><span style="font-size:36px">🖼️</span><b>Add a picture of ${esc(game.name)}</b><span class="dr-caption">It shows here and on the tile.</span></span>`;
+  const face = gamePic ? `<img src="${photoUrl(gamePic)}" alt="">` : `<span class="gg-gamepic__empty"><span class="gg-gamepic__sym" data-tone="${tone(0)}">${symbolSvg(symbolFor(game.symbol, game.id))}</span><b>Add a picture of ${esc(game.name)}</b><span class="dr-caption">Or pick a different symbol. Either shows here and on the tile.</span></span>`;
   return `<button class="dr-cover gg-gamepic ${gamePic ? 'has-picture' : ''}" id="gamePic" aria-label="${label}">${face}</button>
     <input type="file" accept="image/*" id="gamePicIn" hidden aria-label="Picture of the game">`;
 }
@@ -530,12 +535,12 @@ function bindGamePic(game, gamePic, otherPics) {
     toast(`Picture added to ${game.name}.`);
   };
   $('#gamePic').onclick = async () => {
-    if (!otherPics.length && !gamePic) { picIn.click(); return; }
-    const choices = [{ k: 'library', label: 'From your photos' }, ...otherPics.filter((x) => x.k !== game.photoId)];
+    const choices = [{ k: 'library', label: 'From your photos' }, { k: 'symbol', label: 'Choose a symbol' }, ...otherPics.filter((x) => x.k !== game.photoId)];
     if (gamePic) choices.push({ k: 'none', label: 'Remove the picture', danger: true });
     const k = await sheet(`A picture of ${game.name}`, choices);
     if (!k) return;
     if (k === 'library') { picIn.click(); return; }
+    if (k === 'symbol') { go(`/sym/g/${game.id}`); return; }
     if (k === 'none') { await setPic(null); toast('Picture removed.'); return; }
     await setPic(k); toast(`Picture set for ${game.name}.`);
   };
@@ -574,8 +579,8 @@ async function nightsGamePage(cat, game) {
   const when = (sc) => [sc.date ? fmtDate(sc.date) : '', sc.where].filter(Boolean).join(' · ');
   const ranked = players.map((p) => ({ p, best: bestOf(p) })).sort((a, b) => (b.best?.value ?? -1) - (a.best?.value ?? -1));
   const playerTiles = ranked.map(({ p, best }, i) => {
-    const ph = best ? pic(best.photoId) : null;
-    const face = ph ? `<img src="${photoUrl(ph)}" alt="">` : `<div class="dr-cover--type" data-tone="${tone(players.indexOf(p))}" style="position:absolute;inset:0"><span>${esc(p.name)}</span></div>`;
+    const ph = pic(p.photoId) || (best ? pic(best.photoId) : null);
+    const face = ph ? `<img src="${photoUrl(ph)}" alt="">` : symFace(p, players.indexOf(p));
     return `<button class="dr-tile" data-go="/g/${game.id}/p/${p.id}"><div class="dr-cover">${face}${best ? `<span class="gg-cover-rank">#${i + 1}</span>` : ''}</div>
       <div class="dr-tile__title">${esc(p.name)}</div><div class="dr-tile__meta">${best ? `${fmtScore(best.value)}${best.date ? ' · ' + fmtDate(best.date) : ''}` : 'No score yet'}</div></button>`;
   });
@@ -902,7 +907,7 @@ async function addPlayerPage(cat, game) {
     const existing = (await playersOf(game.id)).find((p) => p.name.toLowerCase() === name.toLowerCase());
     if (existing) { go(`/g/${game.id}/p/${existing.id}`); return; }
     const now = Date.now();
-    const p = { id: uid(), gameId: game.id, name, order: (await playersOf(game.id)).length, createdAt: now, updatedAt: now, scores: [] };
+    const p = { id: uid(), gameId: game.id, name, symbol: randomSymbol(), order: (await playersOf(game.id)).length, createdAt: now, updatedAt: now, scores: [] };
     await db.put('players', p);
     go(`/g/${game.id}/p/${p.id}/new`);
   };
@@ -931,8 +936,9 @@ async function playerPage(cat, game, player, mode) {
       <div class="dr-row__end">${s === best ? '<span class="dr-badge dr-badge--accent">Best</span>' : ''}</div></div>`;
   });
   const form = editing ? scoreForm(editing, pic(editing.photoId)) : '';
+  const face = pic(player.photoId);
   if (!paint(my, `<div class="gg-stack">
-    <div class="gg-bar"><div class="gg-disc gg-disc--big">${esc(initials(player.name))}</div>
+    <div class="gg-bar"><button class="gg-face ${face ? '' : 'gg-face--sym'}" id="playerPic" data-tone="${tone(player.order ?? 0)}" aria-label="Picture of ${esc(player.name)}">${face ? `<img src="${photoUrl(face)}" alt="">` : symbolSvg(symbolFor(player.symbol, player.id))}</button><input type="file" accept="image/*" id="playerPicIn" hidden aria-label="Picture of ${esc(player.name)}">
       <div class="gg-grow"><div class="dr-eyebrow">${esc(game.name)}</div>
         <div class="gg-titlerow"><h1 class="dr-title-xl" id="title">${esc(player.name)}</h1><button class="gg-pencil" id="rename" aria-label="Rename">✎</button></div></div></div>
     ${form}
@@ -943,6 +949,22 @@ async function playerPage(cat, game, player, mode) {
   </div>`)) return;
   bindGo();
   $('#rename').onclick = () => renameInline($('#title'), player.name, async (v) => { player.name = v; await touch('players', player); render(); });
+  const ppIn = $('#playerPicIn');
+  ppIn.onchange = async () => {
+    const f = ppIn.files[0]; if (!f) return;
+    const shrunk = await shrink(f);
+    if (player.photoId && player.photoId !== game.photoId) await db.del('photos', player.photoId);
+    const ph = { id: uid(), gameId: game.id, blob: shrunk.blob, w: shrunk.w, h: shrunk.h, bytes: shrunk.blob.size, createdAt: Date.now() };
+    await db.put('photos', ph); player.photoId = ph.id; await touch('players', player); render();
+  };
+  $('#playerPic').onclick = async () => {
+    const choices = [{ k: 'library', label: 'From your photos' }, { k: 'symbol', label: 'Choose a symbol' }];
+    if (face) choices.push({ k: 'none', label: 'Remove the picture', danger: true });
+    const k = await sheet(`A picture of ${player.name}`, choices);
+    if (k === 'library') ppIn.click();
+    else if (k === 'symbol') go(`/sym/p/${player.id}`);
+    else if (k === 'none') { if (player.photoId !== game.photoId) await db.del('photos', player.photoId); player.photoId = null; await touch('players', player); render(); }
+  };
   $('#remove').onclick = async () => {
     if (!(await confirmSheet(`Take ${player.name} off ${game.name}, scores and all?`, `Yes, take ${player.name} off`))) return;
     await deletePlayer(player); toast(`${player.name} taken off ${game.name}.`); go(`/g/${game.id}`);
@@ -1005,9 +1027,26 @@ function bindScoreForm(game, player, s) {
   };
 }
 
+// ---------- the symbol picker (I11) ----------
+async function symbolPage(what, id) {
+  const store = { c: 'categories', g: 'games', p: 'players' }[what];
+  const thing = store ? await db.get(store, id) : null;
+  if (!thing) return home();
+  const back = what === 'c' ? `/c/${id}` : what === 'g' ? `/g/${id}` : `/g/${thing.gameId}/p/${id}`;
+  const current = symbolFor(thing.symbol, thing.id);
+  trail([{ t: 'Home', h: '/' }, { t: thing.name, h: back }, { t: 'Symbol' }], back);
+  app.innerHTML = `<div class="gg-stack">
+    <div><div class="dr-eyebrow">${esc(thing.name)}</div><h1 class="dr-title-xl">Pick a symbol</h1></div>
+    <div class="gg-symgrid">${SYMBOLS.map((sy, i) => `<button class="gg-symbtn ${sy[0] === current ? 'is-on' : ''}" data-sym="${sy[0]}" data-tone="${tone(i)}" aria-label="${esc(sy[1])}">${symbolSvg(sy[0])}</button>`).join('')}</div>
+    <div class="gg-bar"><button class="dr-btn dr-btn--ghost" data-go="${back}">Never mind</button></div>
+  </div>`;
+  bindGo();
+  $$('[data-sym]').forEach((b) => { b.onclick = async () => { thing.symbol = b.dataset.sym; await touch(store, thing); toast('Symbol set.'); go(back); }; });
+}
+
 // ---------- settings, backup, import ----------
 const HOW_IT_WORKS = [
-  ['Categories and games', 'Home holds your categories. A category keeps high scores (one tile per player, like Pinball), games played (one tile per night, like Tabletop games), or both, with + asking which; you choose when you make it and can change it on the category’s page. Its games show as tiles, A to Z, with a search box and a list view if you like, and a game can carry a picture of itself.'],
+  ['Categories and games', 'Home holds your categories. A category keeps high scores (one tile per player, like Pinball), games played (one tile per night, like Tabletop games), or both, with + asking which; you choose when you make it and can change it on the category’s page. Its games show as tiles, A to Z, with a search box and a list view if you like, and a game can carry a picture of itself. Anything without a picture wears one of twenty-three symbols, picked at random; tap the picture, or Symbol, to choose another.'],
   ['Scores', 'In a high-scores category, tap + on a game to add a player, then their score, with the date, where it was and a photo of it. A player can keep every score they ever got; the best one shows outside.'],
   ['Score it live', 'Starting a night, or a round, choose Score it live: who is playing, whether the highest or the lowest score wins, a score to play to if there is one, rounds if it is played in rounds. Then type what each person scored on their turn and Add (minus to take points off), or tap +1; the sheet under the board shows every turn like paper would; Undo if a finger slips, and Finish the game when it is over: the round lands on the night with its winner.'],
   ['Game nights', 'In a games-played category, tap + on a game the night you play it. Each round gets who played, scores if you keep them, and who won; several rounds can share a night. The top of the game keeps your totals, under the name you put in Settings.'],
@@ -1081,9 +1120,9 @@ async function importBackup(file) {
   if (!pack || pack.app !== 'gg' || !Array.isArray(pack.categories)) { toast('That file is not a GG! backup.'); return; }
   const now = Date.now();
   const cats = [], games = [], players = [], photos = [];
-  for (const c of pack.categories) { const id = safeId(c.id); if (id) cats.push({ id, name: safeText(c.name) || 'Untitled', kind: c.kind === 'nights' || c.kind === 'both' ? c.kind : 'scores', order: Number(c.order) || 0, createdAt: Number(c.createdAt) || now, updatedAt: Number(c.updatedAt) || now }); }
+  for (const c of pack.categories) { const id = safeId(c.id); if (id) cats.push({ id, name: safeText(c.name) || 'Untitled', kind: c.kind === 'nights' || c.kind === 'both' ? c.kind : 'scores', symbol: safeText(c.symbol, 24), order: Number(c.order) || 0, createdAt: Number(c.createdAt) || now, updatedAt: Number(c.updatedAt) || now }); }
   const catIds = new Set(cats.map((c) => c.id));
-  for (const g of pack.games || []) { const id = safeId(g.id), cid = safeId(g.categoryId); if (id && cid && catIds.has(cid)) games.push({ id, categoryId: cid, name: safeText(g.name) || 'Untitled', howToScore: safeText(g.howToScore, 500), order: Number(g.order) || 0, createdAt: Number(g.createdAt) || now, updatedAt: Number(g.updatedAt) || now }); }
+  for (const g of pack.games || []) { const id = safeId(g.id), cid = safeId(g.categoryId); if (id && cid && catIds.has(cid)) games.push({ id, categoryId: cid, name: safeText(g.name) || 'Untitled', howToScore: safeText(g.howToScore, 500), symbol: safeText(g.symbol, 24), order: Number(g.order) || 0, createdAt: Number(g.createdAt) || now, updatedAt: Number(g.updatedAt) || now }); }
   const gameIds = new Set(games.map((g) => g.id));
   for (const ph of pack.photos || []) {
     const id = safeId(ph.id), gid = safeId(ph.gameId);
@@ -1103,7 +1142,8 @@ async function importBackup(file) {
       const pid = safeId(s.photoId);
       scores.push({ id: sid, value, date: /^\d{4}-\d{2}-\d{2}$/.test(s.date) ? s.date : '', where: safeText(s.where), photoId: pid && photoIds.has(pid) ? pid : null, createdAt: Number(s.createdAt) || now });
     }
-    players.push({ id, gameId: gid, name: safeText(p.name, 80) || 'Someone', order: Number(p.order) || 0, createdAt: Number(p.createdAt) || now, updatedAt: Number(p.updatedAt) || now, scores });
+    const ppid = safeId(p.photoId);
+    players.push({ id, gameId: gid, name: safeText(p.name, 80) || 'Someone', symbol: safeText(p.symbol, 24), photoId: ppid && photoIds.has(ppid) ? ppid : null, order: Number(p.order) || 0, createdAt: Number(p.createdAt) || now, updatedAt: Number(p.updatedAt) || now, scores });
   }
   const nights = [];
   const isoOk = (d) => /^\d{4}-\d{2}-\d{2}$/.test(d);

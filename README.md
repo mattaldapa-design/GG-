@@ -22,9 +22,9 @@ README-STANDARD.md   Starter Dough version 5
 CLAUDE.md            Starter Dough, as committed in 9c1fcb3
 reference/           Matt's pinball notes (text and screenshot) and his Stern
                      Insider scores (PDF and a table read from it), 2026-10-18
-app/                 the build, version 8: index.html, sw.js,
+app/                 the build, version 9: index.html, sw.js,
                      manifest.webmanifest, css/app.css, js/app.js, js/db.js,
-                     js/util.js, js/seed.js, written by the agent;
+                     js/util.js, js/seed.js, js/symbols.js, written by the agent;
                      css/darkroom-tokens.css and css/darkroom.css copied from
                      the Dark Room kit; icons/ is the die icon Matt settled
                      on (I5), drawn in code
@@ -169,6 +169,35 @@ Both; Both made it "Keeps: Both" and Spider-Man's tile read "Matt ·
 score, the two player tiles, then "Matt on Spider-Man · nights" → + asked
 "A high score" or "A night we played", and the night choice opened "When
 did you play?" with "Where optional". No console errors.
+
+**Version 9, same day (I11, symbols):** twenty-three symbols drawn in
+code as SVG in `app/js/symbols.js`, in the icon's manner (a cream shape
+with a darker edge of the tile's tone, and after Matt's note a gloss: lit
+from the top left, shaded at the bottom, through one gradient defined in
+`index.html`): pinball machine, token, game
+controller, meeple, hand of cards, spade, twelve-sided die, six-sided die,
+trophy, arcade joystick, dartboard, eight ball, paddle, chess knight,
+domino, bowling pin, puzzle piece, poker chip, crown, hourglass, alien,
+UFO, disco ball. A category, a game or a player made from now on gets one
+at random; anything older gets one from its id, so it keeps it. A tile
+with no picture shows its symbol instead of its name in colour. A
+category page has "Symbol"; a game's picture sheet and a player's new
+picture (the disc beside their name) offer "From your photos", "Choose a
+symbol" and, with a picture, "Remove the picture". A player's own photo
+leads their tile, then their best score's photo, then the symbol. The
+picker is a grid of all twenty-three on the four tones. Backups carry
+symbols and player photos.
+
+**Verified 2026-10-18, version 9**, same browser, same size: Home showed
+Pinball with an eight ball and Tabletop games with a domino → Pinball's
+tiles each wore a symbol (puzzle piece, hand of cards, paddle, alien,
+trophy, chess knight among the first) → "Symbol" opened the grid of 23
+with the eight ball marked; the UFO set Pinball's symbol → Spider-Man's
+picture slot showed its hourglass and the player tiles a paddle and a
+spade → the picture sheet offered "From your photos" and "Choose a symbol";
+the alien took the slot → Matt's page showed the paddle beside his name;
+its sheet offered the same two, and the disco ball replaced it. No console
+errors.
 
 **Published 2026-10-18:** workflow run 1 on commit `6951d49` succeeded
 16 seconds after the first push, without anyone switching Pages on by hand
@@ -598,6 +627,63 @@ struck.
   three from its page, since Pinball on his phone was made before this.
 
   **Settled 2026-10-18** by his confirmation; built as version 8.
+
+- **I11 — A category or game with no picture gets a default symbol, one
+  of a set of about twenty drawn in the app icon's style, picked at random
+  when it is made and changeable, so the tiles are not blank colour.**
+  *(2026-10-18, drafted by the agent; not yet confirmed by Matt.)* Matt:
+  *"I love, you know, it's using my my darkroom color palette. Um, but kind
+  of like what we did with the um, home screen app icon, I want some, I, I
+  want every added category to um, have a generic um, like I want it to
+  default to a, a randomized um, symbol or or at least like I want the
+  user to have to choose a icon for it if they don't have a picture already
+  or to use. That way it's just um, like I think I think there's I think
+  there there could be just default game icons that we can design together.
+  Um, that encompass a variety of uh, um, like objects that are used. So
+  like let's say like we have a pinball machine, we have a um, you know, we
+  have a token or a quarter. We have a um, a, a video game controller, a
+  um, a meeple. Like all these, like like maybe like let's come up with a
+  list of like twenty different items, like like a hand of cards, a spade,
+  a um, uh, I don't know, as many different a twelve sided dice, as many
+  different items as we can think of that it will just randomize default to
+  when you start a new um category or adding a new cabinet you know that
+  you don't um have a picture for immediately. That way it's just not a
+  bunch of blank swashes of my of my um color palette."* The agent's
+  readings: the symbols are drawn in code like the icon (a cream shape
+  with a darker edge on one of the four tile tones); they go on category
+  tiles and game tiles, and the picture sheet gains "Choose a symbol".
+
+  *Added 2026-10-18*: *"I think that I can also have a, either a photo for
+  a person that I add or for myself, or use one of these icons For um,
+  their profile."* So a player's tile, too, can carry a photo of them or
+  a symbol, chosen on their page. Matt said "Yes, and that's good" before
+  the agent had actually shown him the list of twenty (the agent's slip);
+  the list is still his to check.
+
+  *Added 2026-10-18*, shown the list of twenty (pinball machine, token,
+  game controller, meeple, hand of cards, spade, twelve-sided die,
+  six-sided die, trophy, arcade joystick, dartboard, eight ball, paddle,
+  chess knight, domino, bowling pin, puzzle piece, poker chip, crown,
+  hourglass): *"All right, just three more that I really want for personal
+  reasons And it's more or less custom for me. I want a um, a little alien
+  uh, a UFO and a disco ball."* Twenty-three in all.
+
+  *Added 2026-10-18*, shown the first sheet: *"it's a good start. I like
+  the general shapes, but um, this is like like the you know darkroom is
+  kind of like a like a punk poppy like art style, and the um, it has a bit
+  of a like like you know the, that means it has like a little bit of a, a
+  gloss to it, and and these feel kind of flat. So um, you know, I want
+  them to. To feel a little more a little more sleek than the hard shapes
+  that these are are in. [...] the alien eyes. Um, they need to just be um,
+  like the eye holes. They are. They just need to be like flipped inverse
+  um, from each other, so that way because um, right now they're kind of
+  pointing like at the base outward. Where they should be pointing at the
+  base inward of the eye."* So: a gloss (a light from the top left over
+  each cream shape, a shade at the bottom), a thinner edge, and the alien's
+  eyes tilted so they funnel toward its chin.
+
+  **Settled 2026-10-18**, on the second sheet: *"Yes, that's the look."*
+  Built as version 9.
 
 ## Decisions
 
