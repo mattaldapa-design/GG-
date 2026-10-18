@@ -1,0 +1,127 @@
+/* GG! — app styles, built beside the Dark Room classes, never over them. */
+
+*, *::before, *::after { box-sizing: border-box; }
+html { height: 100%; }
+body { min-height: 100%; overscroll-behavior-y: none; }
+
+/* Page: phone first, safe areas respected */
+.gg-page { padding-top: var(--space-4); padding-bottom: calc(var(--space-9) + env(safe-area-inset-bottom)); max-width: 760px; }
+@media (max-width: 640px) { .gg-page { padding-top: var(--space-3); } }
+
+/* Top bar: the trail. Tap any level to jump there. */
+.gg-top {
+  position: sticky; top: 0; z-index: 20;
+  padding: calc(10px + env(safe-area-inset-top)) var(--space-4) 10px;
+  background: color-mix(in srgb, var(--room-000) 86%, transparent);
+  backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
+  display: flex; align-items: center; gap: 6px; min-height: 56px;
+}
+.gg-top__back {
+  width: 44px; height: 44px; flex: none; border: 0; border-radius: var(--radius-disc);
+  background: var(--room-200); color: var(--cream); font-size: 22px; cursor: pointer;
+  display: grid; place-items: center; transition: background var(--dur-quick);
+}
+.gg-top__back:hover { background: var(--room-100); }
+.gg-trail { display: flex; align-items: center; gap: 2px; min-width: 0; overflow-x: auto; scrollbar-width: none; -webkit-overflow-scrolling: touch; }
+.gg-trail::-webkit-scrollbar { display: none; }
+.gg-trail a, .gg-trail span {
+  font-family: var(--font-display); font-weight: 700; font-size: 17px; white-space: nowrap;
+  color: var(--cream-dim); text-decoration: none; padding: 8px 10px; border-radius: var(--radius-pill);
+  transition: color var(--dur-quick), background var(--dur-quick);
+}
+.gg-trail a:hover { color: var(--cream); background: var(--room-200); }
+.gg-trail .is-here { color: var(--on-accent); background: var(--accent); }
+.gg-trail i { color: var(--cream-dim); font-style: normal; opacity: .6; }
+
+/* Stacks and rows */
+.gg-stack { display: grid; gap: var(--space-5); }
+.gg-stack--tight { gap: var(--space-3); }
+.gg-bar { display: flex; align-items: center; gap: var(--space-3); flex-wrap: wrap; }
+.gg-bar--between { justify-content: space-between; }
+.gg-grow { flex: 1 1 auto; min-width: 0; }
+
+/* Title row with a pencil, and the inline rename */
+.gg-titlerow { display: flex; align-items: center; gap: 12px; }
+.gg-pencil { width: 40px; height: 40px; flex: none; border: 0; border-radius: var(--radius-disc); background: var(--room-200); color: var(--cream-dim); font-size: 18px; cursor: pointer; }
+.gg-pencil:hover { color: var(--cream); background: var(--room-100); }
+.gg-titleedit { font-family: var(--font-display); font-size: clamp(32px, 4.5vw, 44px); font-weight: 700; letter-spacing: -0.015em; line-height: 1.05; }
+
+/* Tones for typographic covers (artwork slots only; the UI stays signal) */
+[data-tone="0"] { --kind: var(--signal); --on-kind: var(--on-signal); }
+[data-tone="1"] { --kind: var(--hot-pink); --on-kind: var(--on-hot-pink); }
+[data-tone="2"] { --kind: var(--acid); --on-kind: var(--on-acid); }
+[data-tone="3"] { --kind: var(--lagoon); --on-kind: var(--on-lagoon); }
+.dr-cover--type { background: var(--kind, var(--accent)); color: var(--on-kind, var(--on-accent)); }
+.gg-cover-badge { position: absolute; left: 12px; top: 12px; }
+.gg-cover-rank { position: absolute; right: 10px; top: 10px; width: 36px; height: 36px; border-radius: var(--radius-disc); display: grid; place-items: center; background: var(--room-000); color: var(--cream); font-family: var(--font-display); font-weight: 800; font-size: 16px; box-shadow: 0 0 0 2px var(--accent); }
+
+/* Discs with initials, for rows */
+.gg-disc { width: 56px; height: 56px; border-radius: var(--radius-disc); display: grid; place-items: center; background: var(--kind, var(--room-200)); color: var(--on-kind, var(--cream)); font-family: var(--font-display); font-weight: 800; font-size: 20px; letter-spacing: -0.02em; }
+.gg-disc--big { width: 72px; height: 72px; font-size: 26px; }
+.dr-row.is-empty .dr-row__title { color: var(--cream-dim); }
+.gg-more { width: 40px; height: 40px; border-radius: var(--radius-disc); border: 0; background: var(--room-200); color: var(--cream); font-size: 20px; line-height: 1; cursor: pointer; flex: none; }
+.gg-more:hover { background: var(--room-100); }
+
+/* The high score: the one loud line on a game page */
+.gg-hero { display: grid; gap: 6px; }
+.gg-hero .dr-big-number { font-size: clamp(34px, 9vw, 48px); word-break: break-all; }
+.gg-hero__who { font-family: var(--font-display); font-weight: 700; font-size: 20px; }
+.gg-hero__pic { aspect-ratio: 16 / 10; margin-bottom: var(--space-3); }
+
+/* Score list on a player page */
+.gg-score { display: grid; grid-template-columns: 56px 1fr auto; align-items: center; gap: var(--space-3); padding: 10px 12px; border-radius: 14px; cursor: pointer; transition: background var(--dur-quick); }
+.gg-score:hover { background: var(--room-100); }
+.gg-score.is-best { background: var(--room-100); box-shadow: inset 4px 0 0 var(--accent); }
+.gg-score__num { font-family: var(--font-display); font-weight: 700; font-size: 22px; font-variant-numeric: tabular-nums; letter-spacing: -0.01em; }
+.gg-score__thumb { width: 56px; height: 56px; border-radius: var(--radius-sm); overflow: hidden; background: var(--room-200); display: grid; place-items: center; color: var(--cream-dim); font-size: 22px; }
+.gg-score__thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+
+/* Score form */
+.gg-fields { display: grid; gap: var(--space-4); }
+@media (min-width: 520px) { .gg-fields--two { grid-template-columns: 1fr 1fr; } }
+.gg-photo { position: relative; aspect-ratio: 4 / 3; border-radius: var(--radius-lg); overflow: hidden; background: var(--room-200); box-shadow: var(--shadow-rest); cursor: pointer; display: grid; place-items: center; }
+.gg-photo.has-picture { aspect-ratio: auto; max-height: 60vh; }
+.gg-photo img { width: 100%; height: 100%; max-height: 60vh; object-fit: contain; display: block; }
+.gg-photo__empty { display: grid; gap: 6px; justify-items: center; color: var(--cream-dim); text-align: center; padding: 20px; }
+.gg-photo__empty b { font-family: var(--font-display); font-size: 20px; color: var(--cream); }
+.gg-photo input { position: absolute; inset: 0; opacity: 0; cursor: pointer; font-size: 0; }
+.gg-scorein { font-family: var(--font-display); font-weight: 700; font-size: 28px; font-variant-numeric: tabular-nums; letter-spacing: -0.01em; }
+
+/* Name chips */
+.gg-chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.gg-chip {
+  display: inline-flex; align-items: center; gap: 8px; padding: 10px 16px; border: 0; border-radius: var(--radius-pill);
+  background: var(--room-200); color: var(--cream); font-family: var(--font-display); font-weight: 700; font-size: 17px; cursor: pointer;
+  box-shadow: 0 0 0 1px var(--line); transition: transform var(--dur-move) var(--ease-out), box-shadow var(--dur-move) var(--ease-out);
+}
+.gg-chip:hover { transform: translateY(-2px); box-shadow: 0 14px 30px -14px var(--glow), 0 0 0 1px color-mix(in srgb, var(--accent) 60%, transparent); }
+.gg-chip.is-on { background: var(--accent); color: var(--on-accent); }
+
+/* Floating add button */
+.gg-fab {
+  position: fixed; right: calc(var(--space-4) + env(safe-area-inset-right)); bottom: calc(var(--space-5) + env(safe-area-inset-bottom));
+  z-index: 15; width: 64px; height: 64px; font-size: 34px; box-shadow: 0 18px 40px -12px var(--glow);
+}
+
+/* Sheets */
+.gg-backdrop { position: fixed; inset: 0; background: rgba(0, 0, 0, .55); z-index: 45; }
+.gg-sheet { display: grid; gap: 6px; padding-bottom: calc(22px + env(safe-area-inset-bottom)); }
+.gg-sheet .dr-btn { justify-content: flex-start; width: 100%; }
+
+/* Toast */
+.gg-toast {
+  position: fixed; left: 50%; bottom: calc(var(--space-7) + env(safe-area-inset-bottom)); transform: translateX(-50%);
+  z-index: 60; background: var(--room-200); color: var(--cream); padding: 12px 20px; border-radius: var(--radius-pill);
+  box-shadow: var(--shadow-float); font-family: var(--font-display); font-weight: 700; font-size: 17px; max-width: calc(100vw - 32px); text-align: center;
+}
+
+/* Empty states, end-of-page actions, footer */
+.gg-empty { display: grid; gap: var(--space-3); justify-items: start; padding: var(--space-6) 0; }
+.gg-endbar { padding-top: var(--space-5); border-top: 1px solid var(--line); }
+.gg-foot { color: var(--cream-dim); font-size: 15px; padding-top: var(--space-6); }
+.gg-help .dr-panel { display: grid; gap: 6px; padding: 18px var(--space-5); }
+
+/* Reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  .gg-chip, .gg-top__back, .dr-tile .dr-cover { transition: none !important; transform: none !important; }
+}
