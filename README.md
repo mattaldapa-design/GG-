@@ -22,7 +22,7 @@ README-STANDARD.md   Starter Dough version 5
 CLAUDE.md            Starter Dough, as committed in 9c1fcb3
 reference/           Matt's pinball notes (text and screenshot) and his Stern
                      Insider scores (PDF and a table read from it), 2026-10-18
-app/                 the build, version 9: index.html, sw.js,
+app/                 the build, version 10: index.html, sw.js,
                      manifest.webmanifest, css/app.css, js/app.js, js/db.js,
                      js/util.js, js/seed.js, js/symbols.js, written by the agent;
                      css/darkroom-tokens.css and css/darkroom.css copied from
@@ -198,6 +198,11 @@ spade → the picture sheet offered "From your photos" and "Choose a symbol";
 the alien took the slot → Matt's page showed the paddle beside his name;
 its sheet offered the same two, and the disco ball replaced it. No console
 errors.
+
+**Version 10, same day:** Matt, from his phone: *"On the score sheet the
+font in 'this turn' needs to be shrunk down as the 'n' is cut off on my
+phone"*. The placeholder in the live board's points box is now body-sized
+(16px) while typed points stay big, and the box is a little wider.
 
 **Published 2026-10-18:** workflow run 1 on commit `6951d49` succeeded
 16 seconds after the first push, without anyone switching Pages on by hand

@@ -1,5 +1,5 @@
 // GG! — offline shell. Bump VERSION whenever a shell file changes (keep APP_VERSION in js/app.js in step).
-const VERSION = 'gg-v9';
+const VERSION = 'gg-v10';
 const SHELL = [
   './', './index.html', './manifest.webmanifest',
   './css/darkroom-tokens.css', './css/darkroom.css', './css/app.css',

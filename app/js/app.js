@@ -4,7 +4,7 @@ import { esc, uid, todayIso, fmtDate, parseScore, fmtScore, initials, safeId, sa
 import { SEED_CATEGORY, SEED_PLAYERS, SEED_GAMES, SEED_STERN, SEED_BOARD } from './seed.js';
 import { SYMBOLS, symbolFor, randomSymbol, symbolSvg } from './symbols.js';
 
-const APP_VERSION = 9; // keep in step with VERSION in sw.js
+const APP_VERSION = 10; // keep in step with VERSION in sw.js
 const $ = (s, r = document) => r.querySelector(s);
 const $$ = (s, r = document) => [...r.querySelectorAll(s)];
 const app = $('#app');
