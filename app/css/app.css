@@ -106,13 +106,27 @@ body { min-height: 100%; overscroll-behavior-y: none; }
 .gg-lp__btns { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 .gg-lp__plus { min-width: 96px; justify-content: center; font-size: 22px; padding: 14px 22px; }
 .gg-lp__minus { min-width: 64px; justify-content: center; }
-.gg-lp__more { display: inline-flex; gap: 6px; align-items: center; margin-left: auto; }
-.gg-lp__more .dr-input { width: 96px; padding: 10px 12px; }
+.gg-lp__more { display: inline-flex; gap: 6px; align-items: center; }
+.gg-lp__more .dr-input { width: 104px; padding: 12px 12px; font-size: 20px; font-family: var(--font-display); font-weight: 700; }
 .gg-chip__x { border: 0; background: transparent; color: inherit; font-size: 18px; line-height: 1; padding: 0 0 0 4px; cursor: pointer; }
 
 /* Bulk add: a game a row, a score box each */
 .gg-bulk { display: grid; grid-template-columns: 1fr 150px; align-items: center; gap: 12px; padding: 8px 4px; border-bottom: 1px solid var(--line); }
 .gg-bulk__score { padding: 10px 12px; font-variant-numeric: tabular-nums; }
+
+/* Optional, said plainly */
+.gg-opt { font-family: var(--font-body); font-weight: 500; font-size: 15px; color: var(--cream-dim); margin-left: 6px; }
+
+/* The live sheet: a turn a row, a person a column, like paper */
+.gg-sheetwrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+.gg-sheet { border-collapse: collapse; width: 100%; font-variant-numeric: tabular-nums; font-size: 16px; }
+.gg-sheet th, .gg-sheet td { padding: 8px 10px; text-align: right; border-bottom: 1px solid var(--line); white-space: nowrap; }
+.gg-sheet th:first-child, .gg-sheet td:first-child { text-align: left; color: var(--cream-dim); }
+.gg-sheet th { font-family: var(--font-display); font-weight: 700; }
+.gg-sheet td.is-hit { color: var(--cream); font-weight: 600; }
+.gg-sheet tfoot td { font-family: var(--font-display); font-weight: 800; font-size: 18px; border-bottom: 0; border-top: 2px solid var(--line); }
+.gg-lp__add { padding: 12px 18px; }
+.gg-lp__btns .dr-btn--sm { padding: 10px 14px; }
 
 /* Discs with initials, for rows */
 .gg-disc { width: 56px; height: 56px; border-radius: var(--radius-disc); display: grid; place-items: center; background: var(--kind, var(--room-200)); color: var(--on-kind, var(--cream)); font-family: var(--font-display); font-weight: 800; font-size: 20px; letter-spacing: -0.02em; }

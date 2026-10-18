@@ -22,7 +22,7 @@ README-STANDARD.md   Starter Dough version 5
 CLAUDE.md            Starter Dough, as committed in 9c1fcb3
 reference/           Matt's pinball notes (text and screenshot) and his Stern
                      Insider scores (PDF and a table read from it), 2026-10-18
-app/                 the build, version 6: index.html, sw.js,
+app/                 the build, version 7: index.html, sw.js,
                      manifest.webmanifest, css/app.css, js/app.js, js/db.js,
                      js/util.js, js/seed.js, written by the agent;
                      css/darkroom-tokens.css and css/darkroom.css copied from
@@ -139,6 +139,21 @@ last → the bulk screen listed all 43 games; tapping Jordan showed "has …"
 on his 18 games; Sam typed showed none → 12345678 formatted as 12,345,678
 → Deadpool and Jaws filled, dated 10 Oct → "Added 2 scores for Sam." and
 Sam's tiles on those two games held the scores with the date. No console
+errors.
+
+**Version 7, same day (I9):** "Tabletop games" everywhere the app speaks
+(the seed's category, the help, the examples); "Where" says "optional"
+beside it on nights and scores; and the live board carries the sheet: the
+points box ("This turn") and Add are the main control per person, with −1
+and +1 beside, and under the cards a table like paper, a turn a row and a
+person a column, with the totals along the bottom.
+
+**Verified 2026-10-18, version 7**, same browser, same size: Home showed
+Pinball and Tabletop games → a new night's label read "Where optional" → a
+live round on Catan with Matt and Jordan, playing to 200 → 50 for Matt,
+100 for Jordan, 150 for Matt, −50 for Jordan through the "This turn" boxes
+→ the sheet showed the four turns in order, +50 / +100 / +150 / -50 each in
+its own column, totals 200 and 50, and "Matt reached 200." No console
 errors.
 
 **Published 2026-10-18:** workflow run 1 on commit `6951d49` succeeded
@@ -523,6 +538,38 @@ struck.
   games with a score box each, and skips the ones left blank.
 
   **Settled 2026-10-18:** confirmed, and built as version 6.
+
+- **I9 — "Tabletop games", not board games; "where" is optional and says
+  so; and a live score sheet: each person's total with what they scored
+  each turn added to it, or taken off, climbing toward the target.**
+  *(2026-10-18, drafted by the agent; not yet confirmed by Matt.)* Matt:
+  *"I want to change all iterations to uh, of of board game to tabletop
+  game. Um, I don't want where to be um, I don't want where to be a
+  default thing. I think that can be added. Um, or at least if you want
+  to, you can, it can just say optional next to it. Um, With the scoring
+  uh, on the board games, one thing I would like is like, I'd, I'd like a
+  score sheet feature. So like I can live do score sheets and like if
+  somebody's keeping track of the score, they can do it on the app instead
+  of using a pen and paper. Um, I kind of want that to be something that
+  we're that we're doing and, and like each person can have their live
+  score next to it. Um, you know, I'm gonna use an example. There's a board
+  game called Farkle. And uh, that is going to be scored by first person to
+  200 is going to be the winner. And so one of the things that I like to do
+  is like, it'd be nice to um, you know, have my total score and then
+  whatever I score each round, each on each of my turns, I can just add
+  that to my total score. Which is accumulating towards 100. Um, so I can
+  either add or subtract based on whatever I whatever the game entails.
+  And that way I just know how close I'm getting to that and I can keep
+  track of everybody's score, like player one, player two, player three."*
+  The agent's reading: the live board of version 5 already keeps a total
+  per person with points added or taken off each turn and a score to play
+  to; what it lacks is the sheet itself, the turn-by-turn record one sees
+  on paper. So the build is the sheet under the board, and the points box
+  made the main control. "Tabletop" is applied to the app's own words and
+  the seed; Matt's quoted words in this file stay as he said them.
+
+  **Settled 2026-10-18**, shown the sheet: *"Yes, that's the score sheet I
+  meant."* Built as version 7.
 
 ## Decisions
 

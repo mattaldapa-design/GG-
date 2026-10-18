@@ -3,7 +3,7 @@ import * as db from './db.js';
 import { esc, uid, todayIso, fmtDate, parseScore, fmtScore, initials, safeId, safeText, bestOf, leaderOf } from './util.js';
 import { SEED_CATEGORY, SEED_PLAYERS, SEED_GAMES, SEED_STERN, SEED_BOARD } from './seed.js';
 
-const APP_VERSION = 6; // keep in step with VERSION in sw.js
+const APP_VERSION = 7; // keep in step with VERSION in sw.js
 const $ = (s, r = document) => r.querySelector(s);
 const $$ = (s, r = document) => [...r.querySelectorAll(s)];
 const app = $('#app');
@@ -250,7 +250,7 @@ async function home() {
   if (!paint(my, `<div class="gg-stack">
     <div><div class="dr-eyebrow">Your games</div><h1 class="dr-title-xl">GG!</h1></div>
     ${cats.length ? `<div class="dr-shelf">${tiles.join('')}</div>`
-      : '<div class="gg-empty"><p class="dr-body-lg">No games yet. Add a category, like Pinball or Board games, and the games go inside it.</p></div>'}
+      : '<div class="gg-empty"><p class="dr-body-lg">No games yet. Add a category, like Pinball or Tabletop games, and the games go inside it.</p></div>'}
     <div class="gg-bar">
       <button class="dr-btn" data-go="/new">Add a category</button>
       <label class="dr-btn dr-btn--ghost">Import a backup<input type="file" accept=".json,application/json" hidden id="importFile"></label>
@@ -265,11 +265,11 @@ function newCategory() {
   trail([{ t: 'Home', h: '/' }, { t: 'New category' }], '/');
   app.innerHTML = `<div class="gg-stack">
     <h1 class="dr-title-xl">Add a category</h1>
-    <div class="dr-field"><label for="name">What kind of games?</label><input class="dr-input" id="name" placeholder="Pinball, Board games, Pickleball…" autocapitalize="words" autocomplete="off"></div>
+    <div class="dr-field"><label for="name">What kind of games?</label><input class="dr-input" id="name" placeholder="Pinball, Tabletop games, Pickleball…" autocapitalize="words" autocomplete="off"></div>
     <div class="dr-field"><label>How do you keep score in it?</label>
       <div class="gg-kinds">
         <button class="gg-kind is-on" data-kind="scores"><b>High scores</b><span>One tile per player, their best on top. Pinball, arcade.</span></button>
-        <button class="gg-kind" data-kind="nights"><b>Games played</b><span>One tile per night, who played and who won. Board games.</span></button>
+        <button class="gg-kind" data-kind="nights"><b>Games played</b><span>One tile per night, who played and who won. Tabletop games.</span></button>
       </div></div>
     <div class="gg-bar"><button class="dr-btn" id="save">Add it</button></div>
   </div>`;
@@ -530,7 +530,7 @@ function bindGamePic(game, gamePic, otherPics) {
   };
 }
 
-// ---------- games played (I6): a board game's page is its nights ----------
+// ---------- games played (I6): a tabletop game's page is its nights ----------
 const shortDate = (iso) => (iso ? new Date(iso + 'T00:00:00').toLocaleDateString(undefined, { day: 'numeric', month: 'short' }) : 'Undated');
 const joinNames = (arr) => (arr.length <= 1 ? arr.join('') : arr.length === 2 ? `${arr[0]} and ${arr[1]}` : `${arr.slice(0, -1).join(', ')} and ${arr[arr.length - 1]}`);
 // One line for a night: who played and who won, across its rounds.
@@ -599,7 +599,7 @@ function newNight(cat, game) {
     <div><div class="dr-eyebrow">${esc(game.name)}</div><h1 class="dr-title-xl">When did you play?</h1></div>
     <div class="gg-fields gg-fields--two">
       <div class="dr-field"><label for="date">When</label><input class="dr-input" id="date" type="date" value="${todayIso()}"></div>
-      <div class="dr-field"><label for="where">Where</label><input class="dr-input" id="where" placeholder="Whose place, which bar…" autocapitalize="words" autocomplete="off"></div>
+      <div class="dr-field"><label for="where">Where <span class="gg-opt">optional</span></label><input class="dr-input" id="where" placeholder="Whose place, which bar…" autocapitalize="words" autocomplete="off"></div>
     </div>
     <div class="gg-bar"><button class="dr-btn" id="live">Score it live</button><button class="dr-btn dr-btn--quiet" id="save">Write it down after</button></div>
     <div class="dr-field__hint">Live keeps the points as they happen and saves the round when you finish.</div>
@@ -642,7 +642,7 @@ async function nightPage(cat, game, night, mode) {
     <div class="gg-photo ${photo ? 'has-picture' : ''}" id="photoBox">${photo ? `<img src="${photoUrl(photo)}" alt="">` : '<div class="gg-photo__empty"><span style="font-size:40px">🖼️</span><b>Add a picture</b><span class="dr-caption">The table, the board, the faces.</span></div>'}<input type="file" accept="image/*" id="photoIn" aria-label="Picture of the night"></div>
     <div class="gg-fields gg-fields--two">
       <div class="dr-field"><label for="date">When</label><input class="dr-input" id="date" type="date" value="${esc(night.date || '')}"></div>
-      <div class="dr-field"><label for="where">Where</label><input class="dr-input" id="where" value="${esc(night.where || '')}" placeholder="Whose place, which bar…" autocapitalize="words" autocomplete="off"></div>
+      <div class="dr-field"><label for="where">Where <span class="gg-opt">optional</span></label><input class="dr-input" id="where" value="${esc(night.where || '')}" placeholder="Whose place, which bar…" autocapitalize="words" autocomplete="off"></div>
     </div>
     ${editing ? roundForm(editing, night.rounds.indexOf(editing) + 1 || night.rounds.length + 1, known) : ''}
     ${night.live ? `<section class="dr-panel gg-bar gg-bar--between"><div><div class="dr-eyebrow">Live now</div><div class="dr-body">${esc(night.live.players.map((p) => `${p.name} ${fmtScore(p.total)}`).join(' · '))}</div></div><button class="dr-btn" data-go="/g/${game.id}/n/${night.id}/live">Back to the board</button></section>` : ''}
@@ -690,13 +690,17 @@ async function livePage(cat, game, night, mode) {
   const cards = live.players.map((p, i) => `<section class="dr-panel gg-lp ${leaders.includes(p.name) && live.players.length > 1 ? 'is-leading' : ''}" data-i="${i}">
       <div class="gg-lp__head"><span class="gg-lp__name">${esc(p.name)}</span>${leaders.includes(p.name) && live.players.length > 1 ? '<span class="dr-badge dr-badge--accent">Leading</span>' : ''}</div>
       <div class="gg-lp__total">${fmtScore(p.total)}</div>
-      <div class="gg-lp__btns"><button class="dr-btn dr-btn--quiet gg-lp__minus" data-add="${i}" data-n="-1" aria-label="Take a point from ${esc(p.name)}">−1</button><button class="dr-btn gg-lp__plus" data-add="${i}" data-n="1" aria-label="A point for ${esc(p.name)}">+1</button>
-        <span class="gg-lp__more"><input class="dr-input" inputmode="decimal" placeholder="Points" aria-label="Points for ${esc(p.name)}" data-more="${i}"><button class="dr-btn dr-btn--quiet dr-btn--sm" data-addmore="${i}">Add</button></span></div>
+      <div class="gg-lp__btns"><span class="gg-lp__more"><input class="dr-input" inputmode="decimal" placeholder="This turn" aria-label="Points for ${esc(p.name)} this turn" data-more="${i}"><button class="dr-btn gg-lp__add" data-addmore="${i}">Add</button></span>
+        <button class="dr-btn dr-btn--quiet dr-btn--sm" data-add="${i}" data-n="-1" aria-label="Take a point from ${esc(p.name)}">−1</button><button class="dr-btn dr-btn--quiet dr-btn--sm" data-add="${i}" data-n="1" aria-label="A point for ${esc(p.name)}">+1</button></div>
     </section>`);
   if (!paint(my, `<div class="gg-stack">
     <div><div class="dr-eyebrow">Live · ${esc(game.name)}</div><h1 class="dr-title-xl">${esc(night.date ? fmtDate(night.date) : 'Tonight')}</h1>
       <div class="gg-bar gg-bar--between"><span class="dr-body-sm">${esc(status)}</span><button class="dr-btn dr-btn--ghost dr-btn--sm" data-go="/g/${game.id}/n/${night.id}/live/setup">Change</button></div></div>
     <div class="gg-stack gg-stack--tight" id="board">${cards.join('')}</div>
+    ${live.log.length ? `<section class="dr-panel gg-stack gg-stack--tight"><div class="dr-eyebrow">The sheet</div>
+      <div class="gg-sheetwrap"><table class="gg-sheet"><thead><tr><th></th>${live.players.map((p) => `<th>${esc(p.name)}</th>`).join('')}</tr></thead>
+      <tbody>${live.log.map((e, n) => `<tr><td>${live.rounds ? `R${e.round} · ` : ''}${n + 1}</td>${live.players.map((p, i) => `<td class="${i === e.i ? 'is-hit' : ''}">${i === e.i ? (e.n > 0 ? '+' : '') + fmtScore(e.n) : ''}</td>`).join('')}</tr>`).join('')}</tbody>
+      <tfoot><tr><td>Total</td>${live.players.map((p) => `<td>${fmtScore(p.total)}</td>`).join('')}</tr></tfoot></table></div></section>` : ''}
     <div class="gg-bar">
       ${live.rounds ? `<button class="dr-btn dr-btn--quiet" id="nextRound">${live.round >= live.rounds ? 'Last round done' : 'Next round'}</button>` : ''}
       <button class="dr-btn dr-btn--quiet" id="undo" ${live.log.length ? '' : 'disabled'}>Undo</button>
@@ -923,7 +927,7 @@ function scoreForm(s, photo) {
       <div class="dr-field"><label for="score">Score</label><input class="dr-input gg-scorein" id="score" inputmode="numeric" placeholder="0" value="${s.value != null ? fmtScore(s.value) : ''}" autocomplete="off"></div>
       <div class="gg-fields gg-fields--two">
         <div class="dr-field"><label for="date">When</label><input class="dr-input" id="date" type="date" value="${esc(s.date || (s.id ? '' : todayIso()))}"></div>
-        <div class="dr-field"><label for="where">Where</label><input class="dr-input" id="where" placeholder="The bar, the arcade…" value="${esc(s.where || '')}" autocapitalize="words" autocomplete="off"></div>
+        <div class="dr-field"><label for="where">Where <span class="gg-opt">optional</span></label><input class="dr-input" id="where" placeholder="The bar, the arcade…" value="${esc(s.where || '')}" autocapitalize="words" autocomplete="off"></div>
       </div>
     </div>
     <div class="gg-bar gg-bar--between"><div class="gg-bar">
@@ -972,9 +976,9 @@ function bindScoreForm(game, player, s) {
 
 // ---------- settings, backup, import ----------
 const HOW_IT_WORKS = [
-  ['Categories and games', 'Home holds your categories. A category keeps high scores (one tile per player, like Pinball) or games played (one tile per night, like Board games); you choose when you make it. Its games show as tiles, A to Z, with a search box and a list view if you like, and a game can carry a picture of itself.'],
+  ['Categories and games', 'Home holds your categories. A category keeps high scores (one tile per player, like Pinball) or games played (one tile per night, like Tabletop games); you choose when you make it. Its games show as tiles, A to Z, with a search box and a list view if you like, and a game can carry a picture of itself.'],
   ['Scores', 'In a high-scores category, tap + on a game to add a player, then their score, with the date, where it was and a photo of it. A player can keep every score they ever got; the best one shows outside.'],
-  ['Score it live', 'Starting a night, or a round, choose Score it live: who is playing, whether the highest or the lowest score wins, a score to play to if there is one, rounds if it is played in rounds. Then +1 or any number of points per person as they happen, Undo if a finger slips, and Finish the game when it is over: the round lands on the night with its winner.'],
+  ['Score it live', 'Starting a night, or a round, choose Score it live: who is playing, whether the highest or the lowest score wins, a score to play to if there is one, rounds if it is played in rounds. Then type what each person scored on their turn and Add (minus to take points off), or tap +1; the sheet under the board shows every turn like paper would; Undo if a finger slips, and Finish the game when it is over: the round lands on the night with its winner.'],
   ['Game nights', 'In a games-played category, tap + on a game the night you play it. Each round gets who played, scores if you keep them, and who won; several rounds can share a night. The top of the game keeps your totals, under the name you put in Settings.'],
   ['Sharing', 'Share the list on a category sends a plain list of its games and scores to a text, a note, anywhere. Add a person’s scores takes a friend’s list and puts their scores on every game in one go.'],
   ['Back up', 'Back up makes one file with everything in it, pictures included, for Files, iCloud, a text, anywhere. Import a backup brings it back onto a phone.'],
