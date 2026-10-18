@@ -22,7 +22,7 @@ README-STANDARD.md   Starter Dough version 5
 CLAUDE.md            Starter Dough, as committed in 9c1fcb3
 reference/           Matt's pinball notes (text and screenshot) and his Stern
                      Insider scores (PDF and a table read from it), 2026-10-18
-app/                 the build, version 4: index.html, sw.js,
+app/                 the build, version 5: index.html, sw.js,
                      manifest.webmanifest, css/app.css, js/app.js, js/db.js,
                      js/util.js, js/seed.js, written by the agent;
                      css/darkroom-tokens.css and css/darkroom.css copied from
@@ -92,6 +92,33 @@ the night's tile said "2 rounds · Matt 1, Jordan 1" → "Add a category" with
 Games played chosen made a nights category → a database built at version 1
 with one cabinet and one score opened at version 2 with the nights store
 added and the cabinet intact. No console errors.
+
+**Version 5, same day (I7, live scoring):** starting a night, or a round on
+one, offers "Score it live". Setup asks who is playing (chips, or a name),
+Highest or Lowest score wins, an optional score to play to, and optional
+rounds. The board is one card per player with the total big, −1, +1 and an
+"Add" for any number of points, the leader marked, Undo, "Next round" when
+rounds were set, and "Finish the game": the winner by the chosen rule is
+offered, or picked by hand, and the round lands on the night with its
+scores and winner. A live round survives leaving the page (it is kept on
+the night) and shows as "Live now" on the night's tile; "Throw this one
+away" drops it. "Playing to" only nudges when someone gets there; the game
+ends when Matt says. The game remembers whether highest or lowest wins.
+Also fixed: going to the address already shown now repaints (the live setup
+saves and shows the board at the same address).
+
+**Verified 2026-10-18, version 5**, same browser, same size: a new night on
+Catan offered "Score it live" → setup with Matt and Jordan from the chips,
+Sam typed, playing to 10 → the board showed the three at 0 → +1, +1, +1
+and 5 points added gave 2, 1, 5 with Sam leading → Undo took the 5 back →
+−1 took Matt to 1 → 10 points for Jordan made 11 and the nudge "Jordan
+reached 10." → Finish offered "Save: Jordan won" and saved the round as
+Matt 1 · Jordan 11 · Sam 0 with no live round left on the night → the next
+round live with Lowest score and 2 rounds: 7, 3, 9 put Jordan in the lead;
+Next round moved to 2 of 2; 2, 8, 1 made 9, 11, 10 with Matt leading; a
+third Next round only said the last round was done → Finish said "Matt wins
+with 9"; "Pick the winner myself" listed the three and Sam was saved as the
+winner. No console errors.
 
 **Published 2026-10-18:** workflow run 1 on commit `6951d49` succeeded
 16 seconds after the first push, without anyone switching Pages on by hand
@@ -405,6 +432,47 @@ struck.
   **Settled 2026-10-18** by the Decision below on categories; built as
   version 4.
 
+- **I7 — In a game, + can score a round live: Matt tells the app how the
+  scoring works, adds each person's points as they happen, and when the
+  game is done the round lands on the game as its own tile.**
+  *(2026-10-18, drafted by the agent; not yet confirmed by Matt.)* Matt,
+  choosing live scoring as the next piece: *"a live score in the moment um,
+  is might be the probably the trickiest because I would imagine that you
+  can, like, this is mostly going to be for board games. Maybe we should
+  even just call them tabletop games because they're maybe they may be card
+  games too. [...] the way that I would like to do it, so maybe in a
+  perfect world is that like if I'm in the game, I can hit the little plus
+  sign and live score a game in the moment. And so for that one, I would
+  need to make sure that I can tell the app what the scoring is like in
+  there. So like whether I'm gonna do points scoring and add each person's
+  points up, um, it would be nice if I can like like keeps track of those
+  in real time. Um, so like if somebody gains a point, I can I can add
+  their point to this this app. As well, and um, and have that type of
+  scoring. Um, and then when I'm when I'm done, when I finish the game,
+  that that can turn into a game series within the um, like its own tile,
+  its own you know game moment within the, the game that I'm playing."*
+  The agent's reading: the first live version is a points tally, a big +
+  per person, highest total wins, with an optional "playing to" number; it
+  lives in games-played categories, where a finished live round becomes a
+  round on that night. "Tabletop games" is a passing remark about the
+  category's name, not acted on; the category can be renamed in the app.
+
+  *Added 2026-10-18*, asked whether a points tally is enough: *"Yeah,
+  that's that's great. You know, because sometimes a game could be
+  triggered by the number of turns and not necessarily by a highest total
+  or anything like that. So you should have the option to just you know,
+  choose when to end the game as well. And then like, um, sometimes the
+  winner of the game could be the lowest score as well. So maybe you can,
+  can can when you end the game, you can preset whether it's high score
+  wins or low score wins as like a toggleable switch. Um, same thing with
+  like, let's say there's um, a trick-taking game or something like that,
+  and and a game's played over the course of rounds that you're logging,
+  and then uh, you know it's totaling up to a to a total score. You know
+  you can you can put the number of rounds in, um, and then you know it can
+  it can reflect against the highest score, lowest score, winning."*
+
+  **Settled 2026-10-18** by that answer; built as version 5.
+
 ## Decisions
 
 Dated, append-only. Each says what was chosen, the alternative, why, who
@@ -488,6 +556,7 @@ None.
   Decision of 2026-10-18 on scope. Taken up the same day as I6.
 - *2026-10-18* — **Live scoring** for a game played in the moment, such as
   pickleball. Part of the Goal; after game nights, by the same Decision.
+  Taken up the same day as I7.
 - *2026-10-18* — **A friend sharing their score into Matt's copy of a
   game.** Tabled by Matt under I3.
 - *2026-10-18* — **A cabinet's iteration as a detail on a game.** Matt:

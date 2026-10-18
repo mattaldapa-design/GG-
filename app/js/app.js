@@ -3,12 +3,13 @@ import * as db from './db.js';
 import { esc, uid, todayIso, fmtDate, parseScore, fmtScore, initials, safeId, safeText, bestOf, leaderOf } from './util.js';
 import { SEED_CATEGORY, SEED_PLAYERS, SEED_GAMES, SEED_STERN, SEED_BOARD } from './seed.js';
 
-const APP_VERSION = 4; // keep in step with VERSION in sw.js
+const APP_VERSION = 5; // keep in step with VERSION in sw.js
 const $ = (s, r = document) => r.querySelector(s);
 const $$ = (s, r = document) => [...r.querySelectorAll(s)];
 const app = $('#app');
 const top = $('#top');
-const go = (h) => { location.hash = h; };
+// Going where we already are (the live setup saves and shows the board at the same address) repaints instead of waiting for a hash change that never comes.
+const go = (h) => { if (location.hash === '#' + h) render(); else location.hash = h; };
 
 // ---------- small helpers ----------
 let toastTimer;
@@ -206,6 +207,7 @@ async function render() {
         if (p[3] === 'new') return newNight(cat, game);
         const night = await db.get('nights', p[3]);
         if (!night || night.gameId !== game.id) return await nightsGamePage(cat, game);
+        if (p[4] === 'live') return await livePage(cat, game, night, p[5] || '');
         return await nightPage(cat, game, night, p[4] || '');
       }
       if (p[2] === 'p') {
@@ -460,6 +462,7 @@ const joinNames = (arr) => (arr.length <= 1 ? arr.join('') : arr.length === 2 ? 
 // One line for a night: who played and who won, across its rounds.
 function nightLine(n) {
   const rounds = n.rounds || [];
+  if (n.live) return `<b style="color:var(--accent)">Live now</b>${rounds.length ? ' · ' + plural(rounds.length, 'round') + ' done' : ''}`;
   if (!rounds.length) return 'Nothing in it yet';
   const names = []; rounds.forEach((r) => (r.players || []).forEach((p) => { if (!names.some((x) => sameName(x, p.name))) names.push(p.name); }));
   if (rounds.length === 1) { const w = winnersOf(rounds[0]); return `${esc(names.join(', '))}${w.length ? ' · ' + esc(joinNames(w)) + ' won' : ''}`; }
@@ -524,14 +527,17 @@ function newNight(cat, game) {
       <div class="dr-field"><label for="date">When</label><input class="dr-input" id="date" type="date" value="${todayIso()}"></div>
       <div class="dr-field"><label for="where">Where</label><input class="dr-input" id="where" placeholder="Whose place, which bar…" autocapitalize="words" autocomplete="off"></div>
     </div>
-    <div class="gg-bar"><button class="dr-btn" id="save">Next: who played</button></div>
+    <div class="gg-bar"><button class="dr-btn" id="live">Score it live</button><button class="dr-btn dr-btn--quiet" id="save">Write it down after</button></div>
+    <div class="dr-field__hint">Live keeps the points as they happen and saves the round when you finish.</div>
   </div>`;
-  $('#save').onclick = async () => {
+  const make = async () => {
     const now = Date.now();
     const n = { id: uid(), gameId: game.id, date: $('#date').value || '', where: $('#where').value.trim(), photoId: null, rounds: [], createdAt: now, updatedAt: now };
     await db.put('nights', n);
-    go(`/g/${game.id}/n/${n.id}/new`);
+    return n;
   };
+  $('#save').onclick = async () => { const n = await make(); go(`/g/${game.id}/n/${n.id}/new`); };
+  $('#live').onclick = async () => { const n = await make(); go(`/g/${game.id}/n/${n.id}/live`); };
 }
 
 // A night, opened: its rounds, and the form for a new or edited round.
@@ -565,7 +571,8 @@ async function nightPage(cat, game, night, mode) {
       <div class="dr-field"><label for="where">Where</label><input class="dr-input" id="where" value="${esc(night.where || '')}" placeholder="Whose place, which bar…" autocapitalize="words" autocomplete="off"></div>
     </div>
     ${editing ? roundForm(editing, night.rounds.indexOf(editing) + 1 || night.rounds.length + 1, known) : ''}
-    ${!editing ? `<div class="gg-bar"><button class="dr-btn" data-go="/g/${game.id}/n/${night.id}/new">${night.rounds.length ? 'Add another round' : 'Add the round'}</button></div>` : ''}
+    ${night.live ? `<section class="dr-panel gg-bar gg-bar--between"><div><div class="dr-eyebrow">Live now</div><div class="dr-body">${esc(night.live.players.map((p) => `${p.name} ${fmtScore(p.total)}`).join(' · '))}</div></div><button class="dr-btn" data-go="/g/${game.id}/n/${night.id}/live">Back to the board</button></section>` : ''}
+    ${!editing && !night.live ? `<div class="gg-bar"><button class="dr-btn" data-go="/g/${game.id}/n/${night.id}/live">Score ${night.rounds.length ? 'the next' : 'the'} round live</button><button class="dr-btn dr-btn--quiet" data-go="/g/${game.id}/n/${night.id}/new">Write it down</button></div>` : ''}
     ${rows.length ? `<div><div class="dr-eyebrow">${plural(rows.length, 'round')}</div><div class="dr-list">${rows.join('')}</div></div>` : ''}
     <div class="gg-bar gg-endbar"><button class="dr-btn dr-btn--ghost dr-btn--sm" id="remove">Delete this night</button></div>
   </div>`)) return;
@@ -586,6 +593,126 @@ async function nightPage(cat, game, night, mode) {
     await deleteNight(night, game); toast('Night deleted.'); go(`/g/${game.id}`);
   };
   if (editing) bindRoundForm(game, night, editing, known);
+}
+
+// ---------- live scoring (I7): the points as they happen, then the round lands on the night ----------
+const leadersOf = (live) => {
+  const tot = live.players.map((p) => p.total);
+  if (!tot.length) return [];
+  const best = live.winBy === 'low' ? Math.min(...tot) : Math.max(...tot);
+  return live.players.filter((p) => p.total === best).map((p) => p.name);
+};
+async function livePage(cat, game, night, mode) {
+  const my = renderSeq;
+  const known = await knownNames();
+  const allNights = await nightsOf(game.id);
+  if (stale(my)) return;
+  night.rounds = night.rounds || [];
+  trail([{ t: 'Home', h: '/' }, { t: cat.name, h: `/c/${cat.id}` }, { t: game.name, h: `/g/${game.id}` }, { t: shortDate(night.date), h: `/g/${game.id}/n/${night.id}` }, { t: 'Live' }], `/g/${game.id}/n/${night.id}`);
+  if (!night.live || mode === 'setup') return liveSetup(cat, game, night, known, allNights, my);
+  const live = night.live;
+  const leaders = leadersOf(live);
+  const status = [live.winBy === 'low' ? 'Lowest wins' : 'Highest wins', live.target ? `playing to ${fmtScore(live.target)}` : '', live.rounds ? `round ${live.round} of ${live.rounds}` : ''].filter(Boolean).join(' · ');
+  const cards = live.players.map((p, i) => `<section class="dr-panel gg-lp ${leaders.includes(p.name) && live.players.length > 1 ? 'is-leading' : ''}" data-i="${i}">
+      <div class="gg-lp__head"><span class="gg-lp__name">${esc(p.name)}</span>${leaders.includes(p.name) && live.players.length > 1 ? '<span class="dr-badge dr-badge--accent">Leading</span>' : ''}</div>
+      <div class="gg-lp__total">${fmtScore(p.total)}</div>
+      <div class="gg-lp__btns"><button class="dr-btn dr-btn--quiet gg-lp__minus" data-add="${i}" data-n="-1" aria-label="Take a point from ${esc(p.name)}">−1</button><button class="dr-btn gg-lp__plus" data-add="${i}" data-n="1" aria-label="A point for ${esc(p.name)}">+1</button>
+        <span class="gg-lp__more"><input class="dr-input" inputmode="decimal" placeholder="Points" aria-label="Points for ${esc(p.name)}" data-more="${i}"><button class="dr-btn dr-btn--quiet dr-btn--sm" data-addmore="${i}">Add</button></span></div>
+    </section>`);
+  if (!paint(my, `<div class="gg-stack">
+    <div><div class="dr-eyebrow">Live · ${esc(game.name)}</div><h1 class="dr-title-xl">${esc(night.date ? fmtDate(night.date) : 'Tonight')}</h1>
+      <div class="gg-bar gg-bar--between"><span class="dr-body-sm">${esc(status)}</span><button class="dr-btn dr-btn--ghost dr-btn--sm" data-go="/g/${game.id}/n/${night.id}/live/setup">Change</button></div></div>
+    <div class="gg-stack gg-stack--tight" id="board">${cards.join('')}</div>
+    <div class="gg-bar">
+      ${live.rounds ? `<button class="dr-btn dr-btn--quiet" id="nextRound">${live.round >= live.rounds ? 'Last round done' : 'Next round'}</button>` : ''}
+      <button class="dr-btn dr-btn--quiet" id="undo" ${live.log.length ? '' : 'disabled'}>Undo</button>
+      <button class="dr-btn" id="finish">Finish the game</button>
+    </div>
+    <div class="gg-bar gg-endbar"><button class="dr-btn dr-btn--ghost dr-btn--sm" id="abandon">Throw this one away</button></div>
+  </div>`)) return;
+  bindGo();
+  const save = async () => { await touch('nights', night); };
+  const add = async (i, n) => {
+    if (!Number.isFinite(n) || n === 0) return;
+    const p = live.players[i];
+    p.total += n; live.log.push({ i, n, round: live.round, at: Date.now() });
+    await save();
+    if (live.target && n > 0 && p.total >= live.target && p.total - n < live.target) toast(`${p.name} reached ${fmtScore(live.target)}.`);
+    render();
+  };
+  $$('[data-add]').forEach((b) => { b.onclick = () => add(Number(b.dataset.add), Number(b.dataset.n)); });
+  $$('[data-addmore]').forEach((b) => { b.onclick = () => { const inp = $(`[data-more="${b.dataset.addmore}"]`); const n = parseScore(inp.value); if (n == null) { inp.focus(); return; } add(Number(b.dataset.addmore), n); }; });
+  $$('[data-more]').forEach((inp) => { inp.onkeydown = (e) => { if (e.key === 'Enter') { e.preventDefault(); $(`[data-addmore="${inp.dataset.more}"]`).click(); } }; });
+  $('#undo').onclick = async () => { const last = live.log.pop(); if (!last) return; live.players[last.i].total -= last.n; if (last.round != null) live.round = last.round; await save(); render(); };
+  const nr = $('#nextRound');
+  if (nr) nr.onclick = async () => { if (live.round >= live.rounds) { toast('That was the last round. Finish the game when you’re ready.'); return; } live.round += 1; await save(); render(); };
+  $('#finish').onclick = async () => {
+    const w = leadersOf(live);
+    const top = live.players.find((p) => p.name === w[0]);
+    const k = await sheet(w.length === live.players.length && live.players.length > 1 ? 'All level. Who won?' : `${joinNames(w)} ${w.length === 1 ? 'wins' : 'win'} with ${fmtScore(top?.total ?? 0)}`, [
+      { k: 'save', label: w.length === live.players.length && live.players.length > 1 ? 'Save it as a draw' : `Save: ${joinNames(w)} won` },
+      { k: 'pick', label: 'Pick the winner myself' },
+    ]);
+    if (!k) return;
+    let winners = w;
+    if (k === 'pick') {
+      const who = await sheet('Who won?', live.players.map((p) => ({ k: p.name, label: p.name })));
+      if (!who) return;
+      winners = [who];
+    }
+    const r = { id: uid(), players: live.players.map((p) => ({ name: p.name, score: p.total })), winners, live: { winBy: live.winBy, target: live.target, rounds: live.rounds }, createdAt: Date.now() };
+    night.rounds.push(r); delete night.live;
+    await save();
+    toast(`${joinNames(winners)} won.`);
+    go(`/g/${game.id}/n/${night.id}`);
+  };
+  $('#abandon').onclick = async () => {
+    if (!(await confirmSheet('Throw this live round away? The points go with it.', 'Yes, throw it away'))) return;
+    delete night.live; await save(); go(`/g/${game.id}/n/${night.id}`);
+  };
+}
+// Setting up (or changing) a live round: who is playing, who wins, and whether there is a target or a number of rounds.
+function liveSetup(cat, game, night, known, allNights, my) {
+  const live = night.live;
+  const prev = night.rounds[night.rounds.length - 1] || allNights.flatMap((n) => n.rounds || []).slice(-1)[0];
+  const players = live ? live.players.map((p) => p.name) : (prev?.players || []).map((p) => p.name);
+  const draft = { players, winBy: live?.winBy || game.winBy || 'high', target: live?.target ?? null, rounds: live?.rounds ?? null };
+  const chipsHtml = () => known.filter((n) => !draft.players.some((p) => sameName(p, n))).map((n) => `<button class="gg-chip" data-name="${esc(n)}">+ ${esc(n)}</button>`).join('');
+  const listHtml = () => draft.players.map((n, i) => `<span class="gg-chip is-on">${esc(n)} <button class="gg-chip__x" data-drop="${i}" aria-label="Take ${esc(n)} out">×</button></span>`).join('') || '<span class="dr-body-sm">Nobody yet. Tap a name below or type one.</span>';
+  if (!paint(my, `<div class="gg-stack">
+    <div><div class="dr-eyebrow">Live · ${esc(game.name)}</div><h1 class="dr-title-xl">${live ? 'Change the game' : 'Who’s playing?'}</h1></div>
+    <div class="gg-chips" id="list">${listHtml()}</div>
+    <div class="gg-chips" id="chips">${chipsHtml()}</div>
+    <div class="gg-bar"><input class="dr-input gg-grow" id="newName" placeholder="Someone else" autocapitalize="words" autocomplete="off"><button class="dr-btn dr-btn--quiet dr-btn--sm" id="addName">Add</button></div>
+    <div class="dr-field"><label>Who wins?</label><div class="gg-seg" role="group"><button class="${draft.winBy === 'high' ? 'is-on' : ''}" data-winby="high">Highest score</button><button class="${draft.winBy === 'low' ? 'is-on' : ''}" data-winby="low">Lowest score</button></div></div>
+    <div class="gg-fields gg-fields--two">
+      <div class="dr-field"><label for="target">Playing to</label><input class="dr-input" id="target" inputmode="numeric" placeholder="Leave empty to end it yourself" value="${draft.target ?? ''}"><div class="dr-field__hint">A nudge when someone gets there; you still say when it’s over.</div></div>
+      <div class="dr-field"><label for="rounds">Rounds</label><input class="dr-input" id="rounds" inputmode="numeric" placeholder="If it’s played in rounds" value="${draft.rounds ?? ''}"><div class="dr-field__hint">Points add up across them.</div></div>
+    </div>
+    <div class="gg-bar"><button class="dr-btn" id="start">${live ? 'Back to the board' : 'Start'}</button><button class="dr-btn dr-btn--ghost" data-go="/g/${game.id}/n/${night.id}${live ? '/live' : ''}">Never mind</button></div>
+  </div>`)) return;
+  bindGo();
+  const redraw = () => { $('#list').innerHTML = listHtml(); $('#chips').innerHTML = chipsHtml(); bind(); };
+  const add = (name) => { name = name.trim(); if (!name || draft.players.some((p) => sameName(p, name))) return; draft.players.push(name); redraw(); };
+  const bind = () => {
+    $$('[data-name]').forEach((b) => { b.onclick = () => add(b.dataset.name); });
+    $$('[data-drop]').forEach((b) => { b.onclick = () => { draft.players.splice(Number(b.dataset.drop), 1); redraw(); }; });
+  };
+  bind();
+  $$('[data-winby]').forEach((b) => { b.onclick = () => { draft.winBy = b.dataset.winby; $$('[data-winby]').forEach((x) => x.classList.toggle('is-on', x === b)); }; });
+  const newName = $('#newName');
+  $('#addName').onclick = () => { add(newName.value); newName.value = ''; newName.focus(); };
+  newName.onkeydown = (e) => { if (e.key === 'Enter') { e.preventDefault(); add(newName.value); newName.value = ''; } };
+  $('#start').onclick = async () => {
+    if (!draft.players.length) { toast('Who’s playing? Add at least one name.'); newName.focus(); return; }
+    const num = (v) => { const n = parseScore(v); return n != null && n > 0 ? n : null; };
+    draft.target = num($('#target').value); draft.rounds = num($('#rounds').value);
+    const old = live?.players || [];
+    night.live = { players: draft.players.map((n) => ({ name: n, total: old.find((p) => sameName(p.name, n))?.total || 0 })), winBy: draft.winBy, target: draft.target, rounds: draft.rounds, round: Math.min(live?.round || 1, draft.rounds || Infinity), log: (live?.log || []).filter((e) => e.i < draft.players.length), startedAt: live?.startedAt || Date.now() };
+    game.winBy = draft.winBy; await touch('games', game);
+    await touch('nights', night);
+    go(`/g/${game.id}/n/${night.id}/live`);
+  };
 }
 
 function roundForm(r, number, known) {
@@ -773,6 +900,7 @@ function bindScoreForm(game, player, s) {
 const HOW_IT_WORKS = [
   ['Categories and games', 'Home holds your categories. A category keeps high scores (one tile per player, like Pinball) or games played (one tile per night, like Board games); you choose when you make it. Its games show as tiles, A to Z, with a search box and a list view if you like, and a game can carry a picture of itself.'],
   ['Scores', 'In a high-scores category, tap + on a game to add a player, then their score, with the date, where it was and a photo of it. A player can keep every score they ever got; the best one shows outside.'],
+  ['Score it live', 'Starting a night, or a round, choose Score it live: who is playing, whether the highest or the lowest score wins, a score to play to if there is one, rounds if it is played in rounds. Then +1 or any number of points per person as they happen, Undo if a finger slips, and Finish the game when it is over: the round lands on the night with its winner.'],
   ['Game nights', 'In a games-played category, tap + on a game the night you play it. Each round gets who played, scores if you keep them, and who won; several rounds can share a night. The top of the game keeps your totals, under the name you put in Settings.'],
   ['Back up', 'Back up makes one file with everything in it, pictures included, for Files, iCloud, a text, anywhere. Import a backup brings it back onto a phone.'],
   ['Yours', 'Everything stays on this phone until you send it. Nothing is uploaded, nothing needs an account.'],
@@ -880,7 +1008,12 @@ async function importBackup(file) {
       const winners = (Array.isArray(r.winners) ? r.winners : []).map((w) => safeText(w, 80)).filter(Boolean);
       rounds.push({ id: rid, players: ps, winners, createdAt: Number(r.createdAt) || now });
     }
-    nights.push({ id, gameId: gid, date: isoOk(n.date) ? n.date : '', where: safeText(n.where), photoId: pid && photoIds.has(pid) ? pid : null, rounds, createdAt: Number(n.createdAt) || now, updatedAt: Number(n.updatedAt) || now });
+    let live = null;
+    if (n.live && typeof n.live === 'object' && Array.isArray(n.live.players)) {
+      const lp = n.live.players.map((p) => ({ name: safeText(p.name, 80), total: Number(p.total) || 0 })).filter((p) => p.name);
+      if (lp.length) live = { players: lp, winBy: n.live.winBy === 'low' ? 'low' : 'high', target: Number(n.live.target) > 0 ? Number(n.live.target) : null, rounds: Number(n.live.rounds) > 0 ? Number(n.live.rounds) : null, round: Number(n.live.round) || 1, log: [], startedAt: Number(n.live.startedAt) || now };
+    }
+    nights.push({ id, gameId: gid, date: isoOk(n.date) ? n.date : '', where: safeText(n.where), photoId: pid && photoIds.has(pid) ? pid : null, rounds, live, createdAt: Number(n.createdAt) || now, updatedAt: Number(n.updatedAt) || now });
   }
   await db.batch(['categories', 'games', 'players', 'nights', 'photos', 'meta'], (s) => {
     cats.forEach((c) => s.categories.put(c)); games.forEach((g) => s.games.put(g)); players.forEach((p) => s.players.put(p)); nights.forEach((n) => s.nights.put(n)); photos.forEach((p) => s.photos.put(p));

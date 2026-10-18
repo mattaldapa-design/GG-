@@ -97,6 +97,19 @@ body { min-height: 100%; overscroll-behavior-y: none; }
 .gg-x { width: 36px; height: 36px; border-radius: var(--radius-disc); border: 0; background: var(--room-200); color: var(--cream-dim); font-size: 22px; line-height: 1; cursor: pointer; }
 .gg-x:hover { color: var(--cream); background: var(--room-100); }
 
+/* Live scoring: one card per player, thumb-sized buttons */
+.gg-lp { display: grid; gap: 10px; padding: 18px var(--space-5); transition: box-shadow var(--dur-quick); }
+.gg-lp.is-leading { box-shadow: inset 4px 0 0 var(--accent); }
+.gg-lp__head { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.gg-lp__name { font-family: var(--font-display); font-weight: 700; font-size: 22px; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.gg-lp__total { font-family: var(--font-display); font-weight: 800; font-size: 44px; line-height: 1; font-variant-numeric: tabular-nums; letter-spacing: -0.02em; }
+.gg-lp__btns { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.gg-lp__plus { min-width: 96px; justify-content: center; font-size: 22px; padding: 14px 22px; }
+.gg-lp__minus { min-width: 64px; justify-content: center; }
+.gg-lp__more { display: inline-flex; gap: 6px; align-items: center; margin-left: auto; }
+.gg-lp__more .dr-input { width: 96px; padding: 10px 12px; }
+.gg-chip__x { border: 0; background: transparent; color: inherit; font-size: 18px; line-height: 1; padding: 0 0 0 4px; cursor: pointer; }
+
 /* Discs with initials, for rows */
 .gg-disc { width: 56px; height: 56px; border-radius: var(--radius-disc); display: grid; place-items: center; background: var(--kind, var(--room-200)); color: var(--on-kind, var(--cream)); font-family: var(--font-display); font-weight: 800; font-size: 20px; letter-spacing: -0.02em; }
 .gg-disc--big { width: 72px; height: 72px; font-size: 26px; }
