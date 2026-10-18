@@ -30,7 +30,9 @@ app/                 the build, version 2: index.html, sw.js,
                      warm black, no lettering: the artwork is Matt's)
 .claude/launch.json  the preview server for the desktop app
 .github/workflows/   pages.yml, ready for when Matt publishes (not yet used)
-git                  local only, branch claude/project-kickoff-985f79
+git                  remote: github.com/mattaldapa-design/GG- (Matt made it
+                     2026-10-18); the local branch claude/project-kickoff-985f79
+                     is pushed there as main, the default branch
 ```
 
 Started from a portion of Starter Dough (commit `9c1fcb3`, standard
@@ -60,6 +62,14 @@ from a score photo already on it, shown at the top of its page and on its
 tile (a tile with no picture of its own shows the leader's score photo, else
 the name). Removing a score keeps its photo if the game is using it.
 
+**Published 2026-10-18:** workflow run 1 on commit `6951d49` succeeded
+16 seconds after the first push, without anyone switching Pages on by hand
+(the agent could not see the repository settings: the desktop app's browser
+is not signed in to GitHub). `curl` on
+<https://mattaldapa-design.github.io/GG-/> returned 200 and served sw.js at
+`gg-v2`; in the desktop app's browser the page loaded with the manifest,
+Pinball at 43 games, and the service worker "activated", no console errors.
+
 **Verified 2026-10-18** by the agent in the desktop app's built-in browser
 at 375×812, served by the launch.json server: first open seeded 1 category
 and 31 games → Pinball lists all 31 with the leader on each row → Spider-Man
@@ -80,7 +90,7 @@ cleared the slot and deleted the stored photo. No console errors.
 
 **Not verified:** anything on an iPhone (home-screen install, the photo
 picker, the share sheet for backups); the backup file itself was not opened
-in this session; the service worker's cache on a published address.
+in this session.
 
 **At risk:** the service worker serves the app shell cache-first, so a
 changed file does not reach an installed phone until `VERSION` in
@@ -98,12 +108,15 @@ seed now holds 43 games: his 22 from Notes and 21 from Stern Insider.
    <http://localhost:8790>. Warning: after editing files under `app/`, bump
    `VERSION` in `app/sw.js` or unregister the service worker in the browser,
    or the old files keep being served.
-2. **Publish.** Not yet done. The plan, by the Decision of 2026-10-18: push
-   to GitHub, switch Pages on once (Settings → Pages → Source → GitHub
-   Actions), and `.github/workflows/pages.yml` serves `app/` from the
-   repository's default branch. Bump `VERSION` in `app/sw.js` and
-   `APP_VERSION` in `app/js/app.js` together with every publish, or phones
-   keep the old files.
+2. **Publish.** The code is on GitHub at
+   <https://github.com/mattaldapa-design/GG->. Pushing `main` (this folder's
+   branch is pushed there as `main`) runs `.github/workflows/pages.yml`,
+   which serves `app/` at <https://mattaldapa-design.github.io/GG-/>. Pages
+   came on with the first run on 2026-10-18 without a hand switch; if a
+   later run fails on Pages, the switch is Settings → Pages → Source →
+   GitHub Actions. Bump `VERSION` in `app/sw.js` and `APP_VERSION` in
+   `app/js/app.js` together with every publish, or phones keep the old
+   files. Push with `git push origin claude/project-kickoff-985f79:main`.
 3. **On the phone.** Open the published address in Safari or Chrome on the
    iPhone, Share → Add to Home Screen, then open it from the icon.
 4. **Start over on a phone.** Delete the home-screen app and add it again; the
@@ -327,11 +340,7 @@ decided, where it is enforced, and what it **serves**.
 **Open decisions — waiting on Matt, oldest first:**
 
 
-- *2026-10-18* — **Publishing to GitHub Pages**, after the names: Matt
-  creates (or lets the agent create, in the browser he is signed in to) a
-  repository `friendly-competition` under mattaldapa-design, the agent
-  pushes, Matt switches Pages on once, then adds the address to his home
-  screen. No remote and no `gh` tool on this PC as of 2026-10-18.
+None.
 
 ## Not now
 
