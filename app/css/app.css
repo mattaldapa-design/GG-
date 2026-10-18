@@ -80,6 +80,7 @@ body { min-height: 100%; overscroll-behavior-y: none; }
 .gg-kind.is-on { background: var(--room-200); box-shadow: 0 0 0 2px var(--accent); }
 
 /* Totals on a games-played game */
+.dr-heading small { font-family: var(--font-display); font-size: 16px; font-weight: 700; color: var(--cream-dim); }
 .dr-big-number small { font-family: var(--font-display); font-size: 20px; font-weight: 700; color: var(--cream-dim); }
 .gg-totals { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px 16px; }
 @media (min-width: 520px) { .gg-totals { grid-template-columns: repeat(4, 1fr); } }

@@ -22,7 +22,7 @@ README-STANDARD.md   Starter Dough version 5
 CLAUDE.md            Starter Dough, as committed in 9c1fcb3
 reference/           Matt's pinball notes (text and screenshot) and his Stern
                      Insider scores (PDF and a table read from it), 2026-10-18
-app/                 the build, version 7: index.html, sw.js,
+app/                 the build, version 8: index.html, sw.js,
                      manifest.webmanifest, css/app.css, js/app.js, js/db.js,
                      js/util.js, js/seed.js, written by the agent;
                      css/darkroom-tokens.css and css/darkroom.css copied from
@@ -155,6 +155,20 @@ live round on Catan with Matt and Jordan, playing to 200 → 50 for Matt,
 → the sheet showed the four turns in order, +50 / +100 / +150 / -50 each in
 its own column, totals 200 and 50, and "Matt reached 200." No console
 errors.
+
+**Version 8, same day (I10):** a category can keep "Both". Making one
+offers three kinds, and a category's page has "Keeps: … · change" to switch
+an existing one. In a Both category a game's page shows the high score and
+the player tiles first, then the nights with Matt's totals, and + asks "A
+high score" or "A night we played". The shared list carries both parts.
+
+**Verified 2026-10-18, version 8**, same browser, same size: Pinball's page
+read "Keeps: High scores · change"; the sheet offered Games played and
+Both; Both made it "Keeps: Both" and Spider-Man's tile read "Matt ·
+21,932,000 · no nights" → Spider-Man's page showed the 21,932,000 high
+score, the two player tiles, then "Matt on Spider-Man · nights" → + asked
+"A high score" or "A night we played", and the night choice opened "When
+did you play?" with "Where optional". No console errors.
 
 **Published 2026-10-18:** workflow run 1 on commit `6951d49` succeeded
 16 seconds after the first push, without anyone switching Pages on by hand
@@ -571,6 +585,20 @@ struck.
   **Settled 2026-10-18**, shown the sheet: *"Yes, that's the score sheet I
   meant."* Built as version 7.
 
+- **I10 — A category can keep both high scores and games played; a game
+  in it shows both, and + asks which one.** *(2026-10-18, drafted by the
+  agent in chat, confirmed by Matt the same day: "Yes, I think that's
+  something that I, I want.")* Matt, after the tabletop rename: *"the
+  realization is that um, you know, like I, anybody can just custom make
+  their category and their rule set. Um, you know, and that, which makes me
+  also think, you know, if you are doing either high scores or games won or
+  anything, maybe it should just be an option if you want a combination of
+  both for that game. For that category, that is. Is that possible?"* The
+  agent's additions: an existing category can be switched between the
+  three from its page, since Pinball on his phone was made before this.
+
+  **Settled 2026-10-18** by his confirmation; built as version 8.
+
 ## Decisions
 
 Dated, append-only. Each says what was chosen, the alternative, why, who
@@ -641,7 +669,9 @@ decided, where it is enforced, and what it **serves**.
   it matches how Matt described it (pinball one way, board games the
   other). Recommended by the agent, chosen by Matt. Enforced: `kind` on a
   category (`scores` or `nights`), asked on the "Add a category" page;
-  Pinball from the seed is `scores`. **Serves →** I6, Goal.
+  Pinball from the seed is `scores`. *Widened 2026-10-18 by I10:* a third
+  kind, `both`, and the kind can be changed on the category's page.
+  **Serves →** I6, I10, Goal.
 
 **Open decisions — waiting on Matt, oldest first:**
 

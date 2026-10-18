@@ -3,7 +3,7 @@ import * as db from './db.js';
 import { esc, uid, todayIso, fmtDate, parseScore, fmtScore, initials, safeId, safeText, bestOf, leaderOf } from './util.js';
 import { SEED_CATEGORY, SEED_PLAYERS, SEED_GAMES, SEED_STERN, SEED_BOARD } from './seed.js';
 
-const APP_VERSION = 7; // keep in step with VERSION in sw.js
+const APP_VERSION = 8; // keep in step with VERSION in sw.js
 const $ = (s, r = document) => r.querySelector(s);
 const $$ = (s, r = document) => [...r.querySelectorAll(s)];
 const app = $('#app');
@@ -89,7 +89,8 @@ async function deleteGame(g) {
   await db.del('games', g.id);
 }
 // A category keeps high scores (one tile per player) or games played (one tile per night): Decision, 2026-10-18.
-const kindOf = (cat) => (cat?.kind === 'nights' ? 'nights' : 'scores');
+const kindOf = (cat) => (cat?.kind === 'nights' || cat?.kind === 'both' ? cat.kind : 'scores');
+const KIND_LABEL = { scores: 'High scores', nights: 'Games played', both: 'Both' };
 async function nightsOf(gameId) { return (await db.where('nights', 'gameId', gameId)).sort((a, b) => (b.date || '').localeCompare(a.date || '') || (b.createdAt || 0) - (a.createdAt || 0)); }
 async function deleteNight(n, game) {
   if (n.photoId && n.photoId !== game?.photoId) await db.del('photos', n.photoId);
@@ -202,7 +203,7 @@ async function render() {
       const game = await db.get('games', p[1]);
       if (!game) return await home();
       const cat = await db.get('categories', game.categoryId);
-      if (p.length === 2) return kindOf(cat) === 'nights' ? await nightsGamePage(cat, game) : await gamePage(cat, game);
+      if (p.length === 2) return kindOf(cat) === 'scores' ? await gamePage(cat, game) : await nightsGamePage(cat, game);
       if (p[2] === 'add') return await addPlayerPage(cat, game);
       if (p[2] === 'n') {
         if (p[3] === 'new') return newNight(cat, game);
@@ -270,6 +271,7 @@ function newCategory() {
       <div class="gg-kinds">
         <button class="gg-kind is-on" data-kind="scores"><b>High scores</b><span>One tile per player, their best on top. Pinball, arcade.</span></button>
         <button class="gg-kind" data-kind="nights"><b>Games played</b><span>One tile per night, who played and who won. Tabletop games.</span></button>
+        <button class="gg-kind" data-kind="both"><b>Both</b><span>High scores and nights on every game; + asks which.</span></button>
       </div></div>
     <div class="gg-bar"><button class="dr-btn" id="save">Add it</button></div>
   </div>`;
@@ -297,7 +299,7 @@ async function categoryPage(cat) {
   const games = (await gamesOf(cat.id)).sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: 'base' }));
   const players = await db.all('players');
   const photos = await db.all('photos');
-  const nights = kindOf(cat) === 'nights' ? await db.all('nights') : [];
+  const nights = kindOf(cat) !== 'scores' ? await db.all('nights') : [];
   if (stale(my)) return;
   trail([{ t: 'Home', h: '/' }, { t: cat.name }], '/');
   const info = (g) => {
@@ -311,7 +313,8 @@ async function categoryPage(cat) {
     const ps = players.filter((p) => p.gameId === g.id);
     const lead = leaderOf(ps);
     const ph = (g.photoId && photos.find((x) => x.id === g.photoId)) || (lead?.best.photoId ? photos.find((x) => x.id === lead.best.photoId) : null);
-    const meta = lead ? `${esc(lead.player.name)} · ${fmtScore(lead.best.value)}` : (ps.length ? 'No scores yet' : 'Nobody on it yet');
+    let meta = lead ? `${esc(lead.player.name)} · ${fmtScore(lead.best.value)}` : (ps.length ? 'No scores yet' : 'Nobody on it yet');
+    if (kindOf(cat) === 'both') { const nn = nights.filter((n) => n.gameId === g.id).length; meta = `${lead ? meta : 'No high score'} · ${nn ? plural(nn, 'night') : 'no nights'}`; }
     return { ps, lead, ph, meta, end: ps.length ? plural(ps.length, 'player') : '' };
   };
   const tile = (g, i) => {
@@ -342,10 +345,15 @@ async function categoryPage(cat) {
       <div class="gg-seg" role="group" aria-label="View"><button class="${gameView === 'tiles' ? 'is-on' : ''}" data-view="tiles">Tiles</button><button class="${gameView === 'list' ? 'is-on' : ''}" data-view="list">List</button></div>
     </div>` : ''}
     <div id="games">${listHtml()}</div>
-    <div class="gg-bar"><button class="dr-btn" data-go="/c/${cat.id}/new">Add a game</button>${kindOf(cat) === 'scores' && games.length ? `<button class="dr-btn dr-btn--quiet" data-go="/c/${cat.id}/bulk">Add a person’s scores</button>` : ''}${games.length ? `<button class="dr-btn dr-btn--ghost" id="share">Share the list</button>` : ''}</div>
-    <div class="gg-bar gg-endbar"><button class="dr-btn dr-btn--ghost dr-btn--sm" id="delete">Delete ${esc(cat.name)}</button></div>
+    <div class="gg-bar"><button class="dr-btn" data-go="/c/${cat.id}/new">Add a game</button>${kindOf(cat) !== 'nights' && games.length ? `<button class="dr-btn dr-btn--quiet" data-go="/c/${cat.id}/bulk">Add a person’s scores</button>` : ''}${games.length ? `<button class="dr-btn dr-btn--ghost" id="share">Share the list</button>` : ''}</div>
+    <div class="gg-bar gg-endbar"><button class="dr-btn dr-btn--ghost dr-btn--sm" id="kind">Keeps: ${KIND_LABEL[kindOf(cat)]} · change</button><button class="dr-btn dr-btn--ghost dr-btn--sm" id="delete">Delete ${esc(cat.name)}</button></div>
   </div>`)) return;
   bindGo();
+  $('#kind').onclick = async () => {
+    const k = await sheet(`What does ${cat.name} keep?`, ['scores', 'nights', 'both'].filter((x) => x !== kindOf(cat)).map((x) => ({ k: x, label: KIND_LABEL[x] })));
+    if (!k) return;
+    cat.kind = k; await touch('categories', cat); toast(`${cat.name} now keeps ${KIND_LABEL[k].toLowerCase()}.`); render();
+  };
   const redraw = () => { freeUrls(); $('#games').innerHTML = listHtml(); bindGo(); };
   const search = $('#search');
   if (search) search.oninput = () => { gameQuery = search.value; redraw(); };
@@ -365,14 +373,17 @@ async function shareList(cat, games, players, nights) {
   const me = await db.setting('yourName', '');
   const lines = [`${cat.name} — GG!`, ''];
   for (const g of games) {
-    if (kindOf(cat) === 'nights') {
+    const parts = [];
+    if (kindOf(cat) !== 'nights') {
+      const ps = players.filter((p) => p.gameId === g.id).map((p) => ({ p, best: bestOf(p) })).filter((x) => x.best).sort((a, b) => b.best.value - a.best.value);
+      parts.push(ps.length ? ps.map((x) => `${x.p.name} ${fmtScore(x.best.value)}`).join(' · ') : 'no scores yet');
+    }
+    if (kindOf(cat) !== 'scores') {
       const ns = nights.filter((n) => n.gameId === g.id);
       const t = totalsFor(me, ns);
-      lines.push(`${g.name}: ${plural(ns.length, 'night')}${me && t.played ? `, ${me} won ${t.won} of ${t.played}` : ''}`);
-      continue;
+      parts.push(`${plural(ns.length, 'night')}${me && t.played ? `, ${me} won ${t.won} of ${t.played}` : ''}`);
     }
-    const ps = players.filter((p) => p.gameId === g.id).map((p) => ({ p, best: bestOf(p) })).filter((x) => x.best).sort((a, b) => b.best.value - a.best.value);
-    lines.push(`${g.name}: ${ps.length ? ps.map((x) => `${x.p.name} ${fmtScore(x.best.value)}`).join(' · ') : 'no scores yet'}`);
+    lines.push(`${g.name}: ${parts.join(' — ')}`);
   }
   lines.push('', `Sent from GG! on ${fmtDate(todayIso())}`);
   const text = lines.join('\n');
@@ -546,15 +557,30 @@ function nightLine(n) {
 }
 async function nightsGamePage(cat, game) {
   const my = renderSeq;
+  const both = kindOf(cat) === 'both';
   const nights = await nightsOf(game.id);
   const photos = await db.where('photos', 'gameId', game.id);
   const me = await db.setting('yourName', '');
+  const players = both ? await playersOf(game.id) : [];
   if (stale(my)) return;
   trail([{ t: 'Home', h: '/' }, { t: cat.name, h: `/c/${cat.id}` }, { t: game.name }], `/c/${cat.id}`);
   const pic = (id) => (id ? photos.find((x) => x.id === id) : null);
   const gamePic = pic(game.photoId);
   const t = totalsFor(me, nights);
   const nightPics = nights.filter((n) => n.photoId && pic(n.photoId)).map((n) => ({ k: n.photoId, label: `Use the ${shortDate(n.date)} photo` }));
+  // In a "both" category the high scores sit above the nights (I10).
+  const lead = both ? leaderOf(players) : null;
+  for (const p of players) for (const sc of p.scores || []) if (sc.photoId && pic(sc.photoId)) nightPics.push({ k: sc.photoId, label: `Use ${p.name}’s ${fmtScore(sc.value)} photo` });
+  const when = (sc) => [sc.date ? fmtDate(sc.date) : '', sc.where].filter(Boolean).join(' · ');
+  const ranked = players.map((p) => ({ p, best: bestOf(p) })).sort((a, b) => (b.best?.value ?? -1) - (a.best?.value ?? -1));
+  const playerTiles = ranked.map(({ p, best }, i) => {
+    const ph = best ? pic(best.photoId) : null;
+    const face = ph ? `<img src="${photoUrl(ph)}" alt="">` : `<div class="dr-cover--type" data-tone="${tone(players.indexOf(p))}" style="position:absolute;inset:0"><span>${esc(p.name)}</span></div>`;
+    return `<button class="dr-tile" data-go="/g/${game.id}/p/${p.id}"><div class="dr-cover">${face}${best ? `<span class="gg-cover-rank">#${i + 1}</span>` : ''}</div>
+      <div class="dr-tile__title">${esc(p.name)}</div><div class="dr-tile__meta">${best ? `${fmtScore(best.value)}${best.date ? ' · ' + fmtDate(best.date) : ''}` : 'No score yet'}</div></button>`;
+  });
+  const scoresHtml = !both ? '' : `${lead ? `<section class="dr-panel gg-hero"><div class="dr-eyebrow">High score</div><div class="dr-big-number">${fmtScore(lead.best.value)}</div><div class="gg-hero__who">${esc(lead.player.name)}</div>${when(lead.best) ? `<div class="dr-body-sm">${esc(when(lead.best))}</div>` : ''}</section>` : ''}
+    ${players.length ? `<div class="dr-shelf">${playerTiles.join('')}</div>` : `<p class="dr-body-sm">No high scores on ${esc(game.name)} yet. Tap + and choose a high score.</p>`}`;
   const tiles = nights.map((n, i) => {
     const ph = pic(n.photoId);
     const face = ph ? `<img src="${photoUrl(ph)}" alt="">` : `<div class="dr-cover--type" data-tone="${tone(i)}" style="position:absolute;inset:0"><span>${esc(shortDate(n.date))}</span></div>`;
@@ -565,9 +591,10 @@ async function nightsGamePage(cat, game) {
     <div><div class="dr-eyebrow">${esc(cat.name)}</div>
       <div class="gg-titlerow"><h1 class="dr-title-xl" id="title">${esc(game.name)}</h1><button class="gg-pencil" id="rename" aria-label="Rename the game">✎</button></div></div>
     ${gamePicHtml(game, gamePic)}
+    ${scoresHtml}
     <section class="dr-panel gg-stack gg-stack--tight">
-      <div class="dr-eyebrow">${me ? esc(me) + ' on ' + esc(game.name) : 'Your ' + esc(game.name)}</div>
-      ${me ? `<div class="dr-big-number">${t.won} <small>won of ${t.played}</small></div>
+      <div class="dr-eyebrow">${me ? esc(me) + ' on ' + esc(game.name) : 'Your ' + esc(game.name)}${both ? ' · nights' : ''}</div>
+      ${me ? `<div class="${both ? 'dr-heading' : 'dr-big-number'}">${t.won} <small>won of ${t.played}</small></div>
       <div class="gg-totals">
         <div><b>${t.played}</b><span>${t.played === 1 ? 'game' : 'games'} played</span></div>
         <div><b>${t.nights}</b><span>${t.nights === 1 ? 'night' : 'nights'}</span></div>
@@ -580,15 +607,19 @@ async function nightsGamePage(cat, game) {
       : `<div class="gg-empty"><p class="dr-body-lg">No nights on ${esc(game.name)} yet. Tap + the next time you play.</p></div>`}
     <div class="gg-bar gg-endbar"><button class="dr-btn dr-btn--ghost dr-btn--sm" id="delete">Delete ${esc(game.name)}</button></div>
   </div>
-  <button class="dr-btn dr-btn--icon gg-fab" data-go="/g/${game.id}/n/new" aria-label="Add a night">+</button>`)) return;
+  <button class="dr-btn dr-btn--icon gg-fab" ${both ? 'id="fab"' : `data-go="/g/${game.id}/n/new"`} aria-label="Add">+</button>`)) return;
   bindGo();
+  if (both) $('#fab').onclick = async () => {
+    const k = await sheet(`Add to ${game.name}`, [{ k: 'score', label: 'A high score' }, { k: 'night', label: 'A night we played' }]);
+    if (k === 'score') go(`/g/${game.id}/add`); else if (k === 'night') go(`/g/${game.id}/n/new`);
+  };
   $('#rename').onclick = () => renameInline($('#title'), game.name, async (v) => { game.name = v; await touch('games', game); render(); });
   bindGamePic(game, gamePic, nightPics);
   const howto = $('#howto');
   let timer; howto.oninput = () => { clearTimeout(timer); timer = setTimeout(async () => { game.howToScore = howto.value.trim(); await touch('games', game); }, 400); };
   leaveHook = async () => { clearTimeout(timer); if ((game.howToScore || '') !== howto.value.trim()) { game.howToScore = howto.value.trim(); await touch('games', game); } };
   $('#delete').onclick = async () => {
-    if (!(await confirmSheet(`Delete ${game.name} and every night on it?`, `Yes, delete ${game.name}`))) return;
+    if (!(await confirmSheet(`Delete ${game.name} and everything on it?`, `Yes, delete ${game.name}`))) return;
     await deleteGame(game); toast(`${game.name} deleted.`); go(`/c/${cat.id}`);
   };
 }
@@ -976,7 +1007,7 @@ function bindScoreForm(game, player, s) {
 
 // ---------- settings, backup, import ----------
 const HOW_IT_WORKS = [
-  ['Categories and games', 'Home holds your categories. A category keeps high scores (one tile per player, like Pinball) or games played (one tile per night, like Tabletop games); you choose when you make it. Its games show as tiles, A to Z, with a search box and a list view if you like, and a game can carry a picture of itself.'],
+  ['Categories and games', 'Home holds your categories. A category keeps high scores (one tile per player, like Pinball), games played (one tile per night, like Tabletop games), or both, with + asking which; you choose when you make it and can change it on the category’s page. Its games show as tiles, A to Z, with a search box and a list view if you like, and a game can carry a picture of itself.'],
   ['Scores', 'In a high-scores category, tap + on a game to add a player, then their score, with the date, where it was and a photo of it. A player can keep every score they ever got; the best one shows outside.'],
   ['Score it live', 'Starting a night, or a round, choose Score it live: who is playing, whether the highest or the lowest score wins, a score to play to if there is one, rounds if it is played in rounds. Then type what each person scored on their turn and Add (minus to take points off), or tap +1; the sheet under the board shows every turn like paper would; Undo if a finger slips, and Finish the game when it is over: the round lands on the night with its winner.'],
   ['Game nights', 'In a games-played category, tap + on a game the night you play it. Each round gets who played, scores if you keep them, and who won; several rounds can share a night. The top of the game keeps your totals, under the name you put in Settings.'],
@@ -1050,7 +1081,7 @@ async function importBackup(file) {
   if (!pack || pack.app !== 'gg' || !Array.isArray(pack.categories)) { toast('That file is not a GG! backup.'); return; }
   const now = Date.now();
   const cats = [], games = [], players = [], photos = [];
-  for (const c of pack.categories) { const id = safeId(c.id); if (id) cats.push({ id, name: safeText(c.name) || 'Untitled', kind: c.kind === 'nights' ? 'nights' : 'scores', order: Number(c.order) || 0, createdAt: Number(c.createdAt) || now, updatedAt: Number(c.updatedAt) || now }); }
+  for (const c of pack.categories) { const id = safeId(c.id); if (id) cats.push({ id, name: safeText(c.name) || 'Untitled', kind: c.kind === 'nights' || c.kind === 'both' ? c.kind : 'scores', order: Number(c.order) || 0, createdAt: Number(c.createdAt) || now, updatedAt: Number(c.updatedAt) || now }); }
   const catIds = new Set(cats.map((c) => c.id));
   for (const g of pack.games || []) { const id = safeId(g.id), cid = safeId(g.categoryId); if (id && cid && catIds.has(cid)) games.push({ id, categoryId: cid, name: safeText(g.name) || 'Untitled', howToScore: safeText(g.howToScore, 500), order: Number(g.order) || 0, createdAt: Number(g.createdAt) || now, updatedAt: Number(g.updatedAt) || now }); }
   const gameIds = new Set(games.map((g) => g.id));
