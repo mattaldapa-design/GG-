@@ -4,7 +4,7 @@ import { esc, uid, todayIso, fmtDate, parseScore, fmtScore, initials, safeId, sa
 import { SEED_CATEGORY, SEED_PLAYERS, SEED_GAMES, SEED_STERN, SEED_BOARD } from './seed.js';
 import { SYMBOLS, symbolFor, randomSymbol, symbolSvg } from './symbols.js';
 
-const APP_VERSION = 10; // keep in step with VERSION in sw.js
+const APP_VERSION = 11; // keep in step with VERSION in sw.js
 const $ = (s, r = document) => r.querySelector(s);
 const $$ = (s, r = document) => [...r.querySelectorAll(s)];
 const app = $('#app');
@@ -96,6 +96,7 @@ async function deleteGame(g) {
 const kindOf = (cat) => (cat?.kind === 'nights' || cat?.kind === 'both' ? cat.kind : 'scores');
 const KIND_LABEL = { scores: 'High scores', nights: 'Games played', both: 'Both' };
 async function nightsOf(gameId) { return (await db.where('nights', 'gameId', gameId)).sort((a, b) => (b.date || '').localeCompare(a.date || '') || (b.createdAt || 0) - (a.createdAt || 0)); }
+const nightIsEmpty = (n) => !(n.rounds || []).length && !n.live && !n.photoId && !(n.where || '').trim();
 async function deleteNight(n, game) {
   if (n.photoId && n.photoId !== game?.photoId) await db.del('photos', n.photoId);
   await db.del('nights', n.id);
@@ -117,15 +118,18 @@ function totalsFor(me, nights) {
     const mine = (r.players || []).find((p) => sameName(p.name, me));
     if (!mine) continue;
     t.played += 1;
-    (r.players || []).forEach((p) => { if (!sameName(p.name, me)) t.people.add(p.name.trim()); });
+    (r.players || []).forEach((p) => { if (!sameName(p.name, me)) t.people.add(nameKey(p.name)); });
     if (winnersOf(r).some((w) => sameName(w, me))) { t.won += 1; if (mine.score != null && (t.best == null || mine.score > t.best)) t.best = mine.score; }
   }
   return t;
 }
 // Every name on any round, most used first, for the chips.
+// Names are people: "matt" and "Matt" are one chip, spelt the way it was first seen.
+const nameKey = (n) => String(n || '').trim().toLowerCase();
+function countName(count, name) { const k = nameKey(name); if (!k) return; if (!count[k]) count[k] = { name: String(name).trim(), n: 0 }; count[k].n += 1; }
 async function knownNamesFromNights() {
   const count = {};
-  for (const n of await db.all('nights')) for (const r of n.rounds || []) for (const p of r.players || []) count[p.name] = (count[p.name] || 0) + 1;
+  for (const n of await db.all('nights')) for (const r of n.rounds || []) for (const p of r.players || []) countName(count, p.name);
   return count;
 }
 async function deleteCategory(c) {
@@ -135,10 +139,10 @@ async function deleteCategory(c) {
 // Every name that has ever been on a game, most used first: the chips on the "Who?" page.
 async function knownNames() {
   const count = await knownNamesFromNights();
-  for (const p of await db.all('players')) count[p.name] = (count[p.name] || 0) + 1;
+  for (const p of await db.all('players')) countName(count, p.name);
   const me = await db.setting('yourName', '');
-  if (me) count[me] = (count[me] || 0) + 1000;
-  return Object.keys(count).sort((a, b) => count[b] - count[a] || a.localeCompare(b));
+  if (me) { countName(count, me); count[nameKey(me)].n += 1000; count[nameKey(me)].name = me.trim(); }
+  return Object.values(count).sort((a, b) => b.n - a.n || a.name.localeCompare(b.name)).map((x) => x.name);
 }
 // First run: Matt's 23 cabinets, so the app replaces the Notes page from the first open.
 async function seedIfEmpty() {
@@ -180,6 +184,7 @@ const stale = (my) => my !== renderSeq;
 function paint(my, html) { if (stale(my)) return false; app.innerHTML = html; return true; }
 let reloadWhenIdle = false;
 let lastCat = null;
+let keepScroll = false; // set by a page that repaints in place (the live board), so render() does not jump to the top
 window.addEventListener('gg-new-worker', () => { reloadWhenIdle = true; });
 async function render() {
   if (reloadWhenIdle) { reloadWhenIdle = false; if (leaveHook) { const h = leaveHook; leaveHook = null; await h(); } location.reload(); return; }
@@ -188,7 +193,8 @@ async function render() {
   if (stale(my)) return;
   freeUrls();
   app.onclick = null;
-  window.scrollTo(0, 0);
+  const keep = keepScroll, y = window.scrollY; keepScroll = false;
+  if (!keep) window.scrollTo(0, 0);
   const p = location.hash.replace(/^#\/?/, '').split('/').filter(Boolean);
   try {
     if (!p.length) return await home();
@@ -227,6 +233,8 @@ async function render() {
   } catch (e) {
     console.error(e);
     app.innerHTML = `<p class="dr-body">Something went wrong: ${esc(e.message)}</p>`;
+  } finally {
+    if (keep && !stale(my)) requestAnimationFrame(() => window.scrollTo(0, y));
   }
 }
 function trail(items, backHash) {
@@ -303,8 +311,17 @@ async function categoryPage(cat) {
   const my = renderSeq;
   const games = (await gamesOf(cat.id)).sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: 'base' }));
   const players = await db.all('players');
-  const photos = await db.all('photos');
   const nights = kindOf(cat) !== 'scores' ? await db.all('nights') : [];
+  // Only the one picture each tile shows is read, by id: the game's own, else the leader's or the latest night's.
+  const wanted = new Set();
+  for (const g of games) {
+    if (g.photoId) { wanted.add(g.photoId); continue; }
+    const lead = kindOf(cat) !== 'nights' ? leaderOf(players.filter((p) => p.gameId === g.id)) : null;
+    if (lead?.best.photoId) wanted.add(lead.best.photoId);
+    const withPic = nights.filter((n) => n.gameId === g.id && n.photoId).sort((a, b) => (b.date || '').localeCompare(a.date || ''))[0];
+    if (withPic) wanted.add(withPic.photoId);
+  }
+  const photos = (await Promise.all([...wanted].map((id) => db.get('photos', id)))).filter(Boolean);
   if (stale(my)) return;
   trail([{ t: 'Home', h: '/' }, { t: cat.name }], '/');
   const info = (g) => {
@@ -426,7 +443,7 @@ async function bulkAddPage(cat) {
   const setWho = (n) => { who = n.trim(); $$('[data-name]').forEach((b) => b.classList.toggle('is-on', sameName(b.dataset.name, who))); games.forEach((g) => { $(`[data-has="${g.id}"]`).textContent = who ? bestLine(g, who) : ''; }); };
   $$('[data-name]').forEach((b) => { b.onclick = () => { whoIn.value = b.dataset.name; setWho(b.dataset.name); }; });
   whoIn.oninput = () => setWho(whoIn.value);
-  $$('[data-score]').forEach((inp) => { inp.oninput = () => { const n = parseScore(inp.value); inp.value = n == null ? '' : fmtScore(n); }; });
+  $$('[data-score]').forEach((inp) => { inp.onblur = () => { const n = parseScore(inp.value); inp.value = n == null ? '' : fmtScore(n); }; });
   $('#save').onclick = async () => {
     if (!who) { whoIn.focus(); toast('Whose scores are these?'); return; }
     const date = $('#when').value || '';
@@ -473,35 +490,14 @@ async function gamePage(cat, game) {
   const photos = await db.where('photos', 'gameId', game.id);
   if (stale(my)) return;
   trail([{ t: 'Home', h: '/' }, { t: cat.name, h: `/c/${cat.id}` }, { t: game.name }], `/c/${cat.id}`);
-  const lead = leaderOf(players);
   const pic = (id) => (id ? photos.find((x) => x.id === id) : null);
   const gamePic = pic(game.photoId);
-  const when = (s) => [s.date ? fmtDate(s.date) : '', s.where].filter(Boolean).join(' · ');
-  const ranked = players.map((p) => ({ p, best: bestOf(p) })).sort((a, b) => (b.best?.value ?? -1) - (a.best?.value ?? -1));
-  const tiles = ranked.map(({ p, best }, i) => {
-    const ph = pic(p.photoId) || (best ? pic(best.photoId) : null);
-    const face = ph ? `<img src="${photoUrl(ph)}" alt="">` : symFace(p, players.indexOf(p));
-    return `<button class="dr-tile" data-go="/g/${game.id}/p/${p.id}">
-      <div class="dr-cover">${face}${best ? `<span class="gg-cover-rank">#${i + 1}</span>` : ''}</div>
-      <div class="dr-tile__title">${esc(p.name)}</div>
-      <div class="dr-tile__meta">${best ? `${fmtScore(best.value)}${best.date ? ' · ' + fmtDate(best.date) : ''}` : 'No score yet'}</div>
-    </button>`;
-  });
-  // Score photos on this game, to offer as the game's picture.
-  const scorePics = [];
-  for (const p of players) for (const s of p.scores || []) if (s.photoId && pic(s.photoId)) scorePics.push({ k: s.photoId, label: `Use ${p.name}’s ${fmtScore(s.value)} photo` });
+  const scorePics = scorePicsOf(players, pic);
   if (!paint(my, `<div class="gg-stack">
     <div><div class="dr-eyebrow">${esc(cat.name)}</div>
       <div class="gg-titlerow"><h1 class="dr-title-xl" id="title">${esc(game.name)}</h1><button class="gg-pencil" id="rename" aria-label="Rename the game">✎</button></div></div>
     ${gamePicHtml(game, gamePic)}
-    ${lead ? `<section class="dr-panel gg-hero">
-      <div class="dr-eyebrow">High score</div>
-      <div class="dr-big-number">${fmtScore(lead.best.value)}</div>
-      <div class="gg-hero__who">${esc(lead.player.name)}</div>
-      ${when(lead.best) ? `<div class="dr-body-sm">${esc(when(lead.best))}</div>` : ''}
-    </section>` : ''}
-    ${players.length ? `<div class="dr-shelf">${tiles.join('')}</div>`
-      : `<div class="gg-empty"><p class="dr-body-lg">Nobody on ${esc(game.name)} yet. Tap + to add a player and their score.</p></div>`}
+    ${scoresSection(game, players, pic, `<div class="gg-empty"><p class="dr-body-lg">Nobody on ${esc(game.name)} yet. Tap + to add a player and their score.</p></div>`)}
     <div class="gg-bar gg-endbar"><button class="dr-btn dr-btn--ghost dr-btn--sm" id="delete">Delete ${esc(game.name)}</button></div>
   </div>
   <button class="dr-btn dr-btn--icon gg-fab" data-go="/g/${game.id}/add" aria-label="Add a player">+</button>`)) return;
@@ -513,6 +509,23 @@ async function gamePage(cat, game) {
     await deleteGame(game); toast(`${game.name} deleted.`); go(`/c/${cat.id}`);
   };
 }
+
+// The high score and the ranked player tiles, shared by the high-scores page and the Both page.
+function scoresSection(game, players, pic, emptyText) {
+  const lead = leaderOf(players);
+  const when = (sc) => [sc.date ? fmtDate(sc.date) : '', sc.where].filter(Boolean).join(' · ');
+  const ranked = players.map((p) => ({ p, best: bestOf(p) })).sort((a, b) => (b.best?.value ?? -1) - (a.best?.value ?? -1));
+  const tiles = ranked.map(({ p, best }, i) => {
+    const ph = pic(p.photoId) || (best ? pic(best.photoId) : null);
+    const face = ph ? `<img src="${photoUrl(ph)}" alt="">` : symFace(p, players.indexOf(p));
+    return `<button class="dr-tile" data-go="/g/${game.id}/p/${p.id}"><div class="dr-cover">${face}${best ? `<span class="gg-cover-rank">#${i + 1}</span>` : ''}</div>
+      <div class="dr-tile__title">${esc(p.name)}</div><div class="dr-tile__meta">${best ? `${fmtScore(best.value)}${best.date ? ' · ' + fmtDate(best.date) : ''}` : 'No score yet'}</div></button>`;
+  });
+  const hero = lead ? `<section class="dr-panel gg-hero"><div class="dr-eyebrow">High score</div><div class="dr-big-number">${fmtScore(lead.best.value)}</div><div class="gg-hero__who">${esc(lead.player.name)}</div>${when(lead.best) ? `<div class="dr-body-sm">${esc(when(lead.best))}</div>` : ''}</section>` : '';
+  return `${hero}${players.length ? `<div class="dr-shelf">${tiles.join('')}</div>` : emptyText}`;
+}
+// Score photos on a game, offered as the game's picture.
+const scorePicsOf = (players, pic) => { const out = []; for (const p of players) for (const sc of p.scores || []) if (sc.photoId && pic(sc.photoId)) out.push({ k: sc.photoId, label: `Use ${p.name}’s ${fmtScore(sc.value)} photo` }); return out; };
 
 // The game's own picture (I4): a slot at the top of its page, set from the library or from a photo already on the game.
 function gamePicHtml(game, gamePic) {
@@ -574,18 +587,8 @@ async function nightsGamePage(cat, game) {
   const t = totalsFor(me, nights);
   const nightPics = nights.filter((n) => n.photoId && pic(n.photoId)).map((n) => ({ k: n.photoId, label: `Use the ${shortDate(n.date)} photo` }));
   // In a "both" category the high scores sit above the nights (I10).
-  const lead = both ? leaderOf(players) : null;
-  for (const p of players) for (const sc of p.scores || []) if (sc.photoId && pic(sc.photoId)) nightPics.push({ k: sc.photoId, label: `Use ${p.name}’s ${fmtScore(sc.value)} photo` });
-  const when = (sc) => [sc.date ? fmtDate(sc.date) : '', sc.where].filter(Boolean).join(' · ');
-  const ranked = players.map((p) => ({ p, best: bestOf(p) })).sort((a, b) => (b.best?.value ?? -1) - (a.best?.value ?? -1));
-  const playerTiles = ranked.map(({ p, best }, i) => {
-    const ph = pic(p.photoId) || (best ? pic(best.photoId) : null);
-    const face = ph ? `<img src="${photoUrl(ph)}" alt="">` : symFace(p, players.indexOf(p));
-    return `<button class="dr-tile" data-go="/g/${game.id}/p/${p.id}"><div class="dr-cover">${face}${best ? `<span class="gg-cover-rank">#${i + 1}</span>` : ''}</div>
-      <div class="dr-tile__title">${esc(p.name)}</div><div class="dr-tile__meta">${best ? `${fmtScore(best.value)}${best.date ? ' · ' + fmtDate(best.date) : ''}` : 'No score yet'}</div></button>`;
-  });
-  const scoresHtml = !both ? '' : `${lead ? `<section class="dr-panel gg-hero"><div class="dr-eyebrow">High score</div><div class="dr-big-number">${fmtScore(lead.best.value)}</div><div class="gg-hero__who">${esc(lead.player.name)}</div>${when(lead.best) ? `<div class="dr-body-sm">${esc(when(lead.best))}</div>` : ''}</section>` : ''}
-    ${players.length ? `<div class="dr-shelf">${playerTiles.join('')}</div>` : `<p class="dr-body-sm">No high scores on ${esc(game.name)} yet. Tap + and choose a high score.</p>`}`;
+  nightPics.push(...scorePicsOf(players, pic));
+  const scoresHtml = both ? scoresSection(game, players, pic, `<p class="dr-body-sm">No high scores on ${esc(game.name)} yet. Tap + and choose a high score.</p>`) : '';
   const tiles = nights.map((n, i) => {
     const ph = pic(n.photoId);
     const face = ph ? `<img src="${photoUrl(ph)}" alt="">` : `<div class="dr-cover--type" data-tone="${tone(i)}" style="position:absolute;inset:0"><span>${esc(shortDate(n.date))}</span></div>`;
@@ -714,13 +717,18 @@ const leadersOf = (live) => {
 };
 async function livePage(cat, game, night, mode) {
   const my = renderSeq;
-  const known = await knownNames();
-  const allNights = await nightsOf(game.id);
+  const settingUp = !night.live || mode === 'setup';
+  const known = settingUp ? await knownNames() : [];
+  const allNights = settingUp ? await nightsOf(game.id) : [];
   if (stale(my)) return;
   night.rounds = night.rounds || [];
   trail([{ t: 'Home', h: '/' }, { t: cat.name, h: `/c/${cat.id}` }, { t: game.name, h: `/g/${game.id}` }, { t: shortDate(night.date), h: `/g/${game.id}/n/${night.id}` }, { t: 'Live' }], `/g/${game.id}/n/${night.id}`);
   if (!night.live || mode === 'setup') return liveSetup(cat, game, night, known, allNights, my);
   const live = night.live;
+  // Entries carry the person's name (older ones carried a seat number); a "next" entry is a round change.
+  live.log = (live.log || []).map((e) => (e.name || e.next ? e : { ...e, name: live.players[e.i]?.name || '' }));
+  const turns = live.log.filter((e) => !e.next);
+  const seat = (name) => live.players.findIndex((p) => sameName(p.name, name));
   const leaders = leadersOf(live);
   const status = [live.winBy === 'low' ? 'Lowest wins' : 'Highest wins', live.target ? `playing to ${fmtScore(live.target)}` : '', live.rounds ? `round ${live.round} of ${live.rounds}` : ''].filter(Boolean).join(' · ');
   const cards = live.players.map((p, i) => `<section class="dr-panel gg-lp ${leaders.includes(p.name) && live.players.length > 1 ? 'is-leading' : ''}" data-i="${i}">
@@ -733,9 +741,9 @@ async function livePage(cat, game, night, mode) {
     <div><div class="dr-eyebrow">Live · ${esc(game.name)}</div><h1 class="dr-title-xl">${esc(night.date ? fmtDate(night.date) : 'Tonight')}</h1>
       <div class="gg-bar gg-bar--between"><span class="dr-body-sm">${esc(status)}</span><button class="dr-btn dr-btn--ghost dr-btn--sm" data-go="/g/${game.id}/n/${night.id}/live/setup">Change</button></div></div>
     <div class="gg-stack gg-stack--tight" id="board">${cards.join('')}</div>
-    ${live.log.length ? `<section class="dr-panel gg-stack gg-stack--tight"><div class="dr-eyebrow">The sheet</div>
+    ${turns.length ? `<section class="dr-panel gg-stack gg-stack--tight"><div class="dr-eyebrow">The sheet</div>
       <div class="gg-sheetwrap"><table class="gg-sheet"><thead><tr><th></th>${live.players.map((p) => `<th>${esc(p.name)}</th>`).join('')}</tr></thead>
-      <tbody>${live.log.map((e, n) => `<tr><td>${live.rounds ? `R${e.round} · ` : ''}${n + 1}</td>${live.players.map((p, i) => `<td class="${i === e.i ? 'is-hit' : ''}">${i === e.i ? (e.n > 0 ? '+' : '') + fmtScore(e.n) : ''}</td>`).join('')}</tr>`).join('')}</tbody>
+      <tbody>${turns.map((e, n) => `<tr><td>${live.rounds ? `R${e.round} · ` : ''}${n + 1}</td>${live.players.map((p) => `<td class="${sameName(p.name, e.name) ? 'is-hit' : ''}">${sameName(p.name, e.name) ? (e.n > 0 ? '+' : '') + fmtScore(e.n) : ''}</td>`).join('')}</tr>`).join('')}</tbody>
       <tfoot><tr><td>Total</td>${live.players.map((p) => `<td>${fmtScore(p.total)}</td>`).join('')}</tr></tfoot></table></div></section>` : ''}
     <div class="gg-bar">
       ${live.rounds ? `<button class="dr-btn dr-btn--quiet" id="nextRound">${live.round >= live.rounds ? 'Last round done' : 'Next round'}</button>` : ''}
@@ -746,20 +754,26 @@ async function livePage(cat, game, night, mode) {
   </div>`)) return;
   bindGo();
   const save = async () => { await touch('nights', night); };
+  const repaint = () => { keepScroll = true; render(); };
   const add = async (i, n) => {
     if (!Number.isFinite(n) || n === 0) return;
     const p = live.players[i];
-    p.total += n; live.log.push({ i, n, round: live.round, at: Date.now() });
+    p.total += n; live.log.push({ name: p.name, n, round: live.round, at: Date.now() });
     await save();
     if (live.target && n > 0 && p.total >= live.target && p.total - n < live.target) toast(`${p.name} reached ${fmtScore(live.target)}.`);
-    render();
+    repaint();
   };
   $$('[data-add]').forEach((b) => { b.onclick = () => add(Number(b.dataset.add), Number(b.dataset.n)); });
   $$('[data-addmore]').forEach((b) => { b.onclick = () => { const inp = $(`[data-more="${b.dataset.addmore}"]`); const n = parseScore(inp.value); if (n == null) { inp.focus(); return; } add(Number(b.dataset.addmore), n); }; });
   $$('[data-more]').forEach((inp) => { inp.onkeydown = (e) => { if (e.key === 'Enter') { e.preventDefault(); $(`[data-addmore="${inp.dataset.more}"]`).click(); } }; });
-  $('#undo').onclick = async () => { const last = live.log.pop(); if (!last) return; live.players[last.i].total -= last.n; if (last.round != null) live.round = last.round; await save(); render(); };
+  $('#undo').onclick = async () => {
+    const last = live.log.pop(); if (!last) return;
+    if (last.next) { live.round = last.from; toast(`Back to round ${live.round}.`); }
+    else { const i = seat(last.name); if (i >= 0) live.players[i].total -= last.n; }
+    await save(); repaint();
+  };
   const nr = $('#nextRound');
-  if (nr) nr.onclick = async () => { if (live.round >= live.rounds) { toast('That was the last round. Finish the game when you’re ready.'); return; } live.round += 1; await save(); render(); };
+  if (nr) nr.onclick = async () => { if (live.round >= live.rounds) { toast('That was the last round. Finish the game when you’re ready.'); return; } live.log.push({ next: true, from: live.round, at: Date.now() }); live.round += 1; await save(); repaint(); };
   $('#finish').onclick = async () => {
     const w = leadersOf(live);
     const top = live.players.find((p) => p.name === w[0]);
@@ -803,9 +817,11 @@ function liveSetup(cat, game, night, known, allNights, my) {
       <div class="dr-field"><label for="target">Playing to</label><input class="dr-input" id="target" inputmode="numeric" placeholder="Leave empty to end it yourself" value="${draft.target ?? ''}"><div class="dr-field__hint">A nudge when someone gets there; you still say when it’s over.</div></div>
       <div class="dr-field"><label for="rounds">Rounds</label><input class="dr-input" id="rounds" inputmode="numeric" placeholder="If it’s played in rounds" value="${draft.rounds ?? ''}"><div class="dr-field__hint">Points add up across them.</div></div>
     </div>
-    <div class="gg-bar"><button class="dr-btn" id="start">${live ? 'Back to the board' : 'Start'}</button><button class="dr-btn dr-btn--ghost" data-go="/g/${game.id}/n/${night.id}${live ? '/live' : ''}">Never mind</button></div>
+    <div class="gg-bar"><button class="dr-btn" id="start">${live ? 'Back to the board' : 'Start'}</button><button class="dr-btn dr-btn--ghost" id="never">Never mind</button></div>
   </div>`)) return;
   bindGo();
+  // Stepping back out of a night with nothing in it yet takes the night with it (review, 2026-10-18).
+  $('#never').onclick = async () => { if (live) { go(`/g/${game.id}/n/${night.id}/live`); return; } if (nightIsEmpty(night)) { await deleteNight(night, game); go(`/g/${game.id}`); } else go(`/g/${game.id}/n/${night.id}`); };
   const redraw = () => { $('#list').innerHTML = listHtml(); $('#chips').innerHTML = chipsHtml(); bind(); };
   const add = (name) => { name = name.trim(); if (!name || draft.players.some((p) => sameName(p, name))) return; draft.players.push(name); redraw(); };
   const bind = () => {
@@ -822,7 +838,7 @@ function liveSetup(cat, game, night, known, allNights, my) {
     const num = (v) => { const n = parseScore(v); return n != null && n > 0 ? n : null; };
     draft.target = num($('#target').value); draft.rounds = num($('#rounds').value);
     const old = live?.players || [];
-    night.live = { players: draft.players.map((n) => ({ name: n, total: old.find((p) => sameName(p.name, n))?.total || 0 })), winBy: draft.winBy, target: draft.target, rounds: draft.rounds, round: Math.min(live?.round || 1, draft.rounds || Infinity), log: (live?.log || []).filter((e) => e.i < draft.players.length), startedAt: live?.startedAt || Date.now() };
+    night.live = { players: draft.players.map((n) => ({ name: n, total: old.find((p) => sameName(p.name, n))?.total || 0 })), winBy: draft.winBy, target: draft.target, rounds: draft.rounds, round: Math.min(live?.round || 1, draft.rounds || Infinity), log: (live?.log || []).filter((e) => e.next || draft.players.some((n) => sameName(n, e.name))), startedAt: live?.startedAt || Date.now() };
     game.winBy = draft.winBy; await touch('games', game);
     await touch('nights', night);
     go(`/g/${game.id}/n/${night.id}/live`);
@@ -856,6 +872,7 @@ function playerRow(p, i, r) {
 }
 function bindRoundForm(game, night, r, known) {
   const back = () => go(`/g/${game.id}/n/${night.id}`);
+  const cancel = async () => { if (!r.id && nightIsEmpty(night)) { await deleteNight(night, game); go(`/g/${game.id}`); } else back(); };
   // The form keeps its own copy until Save; players and winners live in r.
   const redraw = () => { $('#players').innerHTML = r.players.map((p, i) => playerRow(p, i, r)).join(''); const chips = $('#chips'); if (chips) chips.innerHTML = known.filter((n) => !r.players.some((p) => sameName(p.name, n))).map((n) => `<button class="gg-chip" data-name="${esc(n)}">+ ${esc(n)}</button>`).join(''); bind(); };
   const readScores = () => $$('.gg-prow').forEach((row) => { const i = Number(row.dataset.i); r.players[i].score = parseScore($('.gg-prow__score', row).value); });
@@ -869,7 +886,7 @@ function bindRoundForm(game, night, r, known) {
   const newName = $('#newName');
   $('#addName').onclick = () => { add(newName.value); newName.value = ''; newName.focus(); };
   newName.onkeydown = (e) => { if (e.key === 'Enter') { e.preventDefault(); add(newName.value); newName.value = ''; } };
-  $('#cancel').onclick = back;
+  $('#cancel').onclick = cancel;
   $('#save').onclick = async () => {
     readScores();
     if (!r.players.length) { toast('Who played? Add at least one name.'); newName.focus(); return; }
@@ -993,7 +1010,7 @@ function scoreForm(s, photo) {
 function bindScoreForm(game, player, s) {
   const scoreIn = $('#score'), dateIn = $('#date'), whereIn = $('#where'), photoIn = $('#photoIn');
   let newPhoto = null; // {blob,w,h} chosen but not yet saved
-  scoreIn.oninput = () => { const n = parseScore(scoreIn.value); scoreIn.value = n == null ? '' : fmtScore(n); };
+  scoreIn.onblur = () => { const n = parseScore(scoreIn.value); scoreIn.value = n == null ? '' : fmtScore(n); };
   if (!s.id) scoreIn.focus();
   photoIn.onchange = async () => {
     const f = photoIn.files[0]; if (!f) return;
@@ -1102,7 +1119,7 @@ async function backup() {
   toast('Packing it up…');
   const photos = [];
   for (const p of await db.all('photos')) photos.push({ id: p.id, gameId: p.gameId, w: p.w, h: p.h, type: p.blob.type || 'image/jpeg', data: await blobToB64(p.blob) });
-  const pack = { app: 'gg', format: 2, exportedAt: new Date().toISOString(), categories: await db.all('categories'), games: await db.all('games'), players: await db.all('players'), nights: await db.all('nights'), photos };
+  const pack = { app: 'gg', format: 3, exportedAt: new Date().toISOString(), settings: { yourName: await db.setting('yourName', '') }, categories: await db.all('categories'), games: await db.all('games'), players: await db.all('players'), nights: await db.all('nights'), photos };
   const name = `GG backup ${todayIso()}.json`;
   const file = new File([JSON.stringify(pack)], name, { type: 'application/json' });
   if (navigator.canShare && navigator.canShare({ files: [file] })) {
@@ -1161,16 +1178,21 @@ async function importBackup(file) {
     let live = null;
     if (n.live && typeof n.live === 'object' && Array.isArray(n.live.players)) {
       const lp = n.live.players.map((p) => ({ name: safeText(p.name, 80), total: Number(p.total) || 0 })).filter((p) => p.name);
-      if (lp.length) live = { players: lp, winBy: n.live.winBy === 'low' ? 'low' : 'high', target: Number(n.live.target) > 0 ? Number(n.live.target) : null, rounds: Number(n.live.rounds) > 0 ? Number(n.live.rounds) : null, round: Number(n.live.round) || 1, log: [], startedAt: Number(n.live.startedAt) || now };
+      const log = (Array.isArray(n.live.log) ? n.live.log : []).map((e) => (e && e.next ? { next: true, from: Number(e.from) || 1, at: Number(e.at) || now }
+        : { name: safeText(e?.name ?? lp[Number(e?.i)]?.name, 80), n: Number(e?.n), round: Number(e?.round) || 1, at: Number(e?.at) || now })).filter((e) => e.next || (e.name && Number.isFinite(e.n)));
+      if (lp.length) live = { players: lp, winBy: n.live.winBy === 'low' ? 'low' : 'high', target: Number(n.live.target) > 0 ? Number(n.live.target) : null, rounds: Number(n.live.rounds) > 0 ? Number(n.live.rounds) : null, round: Number(n.live.round) || 1, log, startedAt: Number(n.live.startedAt) || now };
     }
     nights.push({ id, gameId: gid, date: isoOk(n.date) ? n.date : '', where: safeText(n.where), photoId: pid && photoIds.has(pid) ? pid : null, rounds, live, createdAt: Number(n.createdAt) || now, updatedAt: Number(n.updatedAt) || now });
   }
+  const myName = await db.setting('yourName', '');
+  const theirName = safeText(pack.settings?.yourName, 80);
   await db.batch(['categories', 'games', 'players', 'nights', 'photos', 'meta'], (s) => {
     cats.forEach((c) => s.categories.put(c)); games.forEach((g) => s.games.put(g)); players.forEach((p) => s.players.put(p)); nights.forEach((n) => s.nights.put(n)); photos.forEach((p) => s.photos.put(p));
     s.meta.put({ key: 'seeded', value: true });
+    if (!myName && theirName) s.meta.put({ key: 'yourName', value: theirName }); // a phone with no name yet takes the backup's
   });
   toast(`Brought in ${plural(games.length, 'game')}, ${plural(players.length, 'player tile')} and ${plural(nights.length, 'night')}.`);
-  go('/'); render();
+  go('/');
 }
 
 // ---------- start ----------

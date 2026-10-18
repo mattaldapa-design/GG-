@@ -22,7 +22,7 @@ README-STANDARD.md   Starter Dough version 5
 CLAUDE.md            Starter Dough, as committed in 9c1fcb3
 reference/           Matt's pinball notes (text and screenshot) and his Stern
                      Insider scores (PDF and a table read from it), 2026-10-18
-app/                 the build, version 10: index.html, sw.js,
+app/                 the build, version 11: index.html, sw.js,
                      manifest.webmanifest, css/app.css, js/app.js, js/db.js,
                      js/util.js, js/seed.js, js/symbols.js, written by the agent;
                      css/darkroom-tokens.css and css/darkroom.css copied from
@@ -203,6 +203,30 @@ errors.
 font in 'this turn' needs to be shrunk down as the 'n' is cut off on my
 phone"*. The placeholder in the live board's points box is now body-sized
 (16px) while typed points stay big, and the box is a little wider.
+
+**Version 11, same day, after a code review (ten findings, all fixed):**
+the live board repaints in place and keeps its scroll instead of jumping
+to the top on every point; the live log is kept by the person's name, so
+changing who is playing mid-game keeps the sheet honest, and "Next round"
+is itself a log entry Undo takes back (with a toast); a backup carries
+Matt's name and a live round's log, and import keeps both (the name only
+when the phone has none); a night with nothing in it is deleted when he
+backs out of its first round or its live setup; a category page reads only
+the pictures its tiles show, by id, instead of every photo in the store;
+the high-score hero and player tiles are one function shared by the two
+game pages; name chips and "people played with" treat "sam" and "Sam" as
+one person; and score boxes format when the finger leaves them, not on
+every keystroke.
+
+**Verified 2026-10-18, version 11**, same browser, same size: Pinball's 43
+tiles and Spider-Man's hero and two player tiles drew as before → on Catan,
+Score it live then Never mind left no night behind and landed on the game
+→ a live round with Matt, Jordan and "sam", 3 rounds: scrolled to 295px, +1
+on the third card kept the page at 295px → 50, 100, Next round (2 of 3),
+10, Undo took the 10, Undo again said "Back to round 1." → Change the game
+with Matt dropped: the sheet's columns read Jordan and sam, Jordan's +100
+and sam's +1 stayed in their own columns, totals 100 and 1. No console
+errors.
 
 **Published 2026-10-18:** workflow run 1 on commit `6951d49` succeeded
 16 seconds after the first push, without anyone switching Pages on by hand
