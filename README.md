@@ -22,12 +22,12 @@ README-STANDARD.md   Starter Dough version 5
 CLAUDE.md            Starter Dough, as committed in 9c1fcb3
 reference/           Matt's pinball notes (text and screenshot) and his Stern
                      Insider scores (PDF and a table read from it), 2026-10-18
-app/                 the build, version 2: index.html, sw.js,
+app/                 the build, version 3: index.html, sw.js,
                      manifest.webmanifest, css/app.css, js/app.js, js/db.js,
                      js/util.js, js/seed.js, written by the agent;
                      css/darkroom-tokens.css and css/darkroom.css copied from
-                     the Dark Room kit; three placeholder icons (a red disc on
-                     warm black, no lettering: the artwork is Matt's)
+                     the Dark Room kit; icons/ is the die icon Matt settled
+                     on (I5), drawn in code
 .claude/launch.json  the preview server for the desktop app
 .github/workflows/   pages.yml, ready for when Matt publishes (not yet used)
 git                  remote: github.com/mattaldapa-design/GG- (Matt made it
@@ -61,6 +61,10 @@ remembers; a game carries a picture of itself, set from the photo library or
 from a score photo already on it, shown at the top of its page and on its
 tile (a tile with no picture of its own shows the leader's score photo, else
 the name). Removing a score keeps its photo if the game is using it.
+
+**Version 3, same day (I5):** the home-screen icon is the die, after four
+drawings with Matt. A phone that already has GG! on its home screen keeps
+the old icon until the app is removed and added again.
 
 **Published 2026-10-18:** workflow run 1 on commit `6951d49` succeeded
 16 seconds after the first push, without anyone switching Pages on by hand
@@ -275,6 +279,63 @@ struck.
   **Settled 2026-10-18:** confirmed, and built as version 2 (see Current
   state).
 
+- **I5 — The home-screen icon is a six-sided die, a little 3D, its three
+  faces carrying outlines of a pinball machine, a meeple and a hand of
+  cards, so GG! is told apart from the journal while keeping the same
+  design.** *(2026-10-18, drafted by the agent; not yet confirmed by
+  Matt.)* Matt, after adding the app to his home screen: *"the icon that I
+  save um, onto my home screen looks very similar to the one uh, for my
+  journaling app. Which is okay, because they're like kind of the same, but
+  um, I want this one to look a, like a dice. Um, so like that way it gives
+  kind of that that same design, but but I want it to be a um, let's
+  actually have it be like a um, like a Six-sided dice with at least like
+  some pips showing. Uh, it doesn't have to be all of them, maybe just make
+  it look a little bit like um, 3D."*
+
+  *Added 2026-10-18*, shown the first drawing (a red die with five, three
+  and one in pips): *"I like the concept. Um, but now, actually, instead of
+  pips, um, let's have the three sides have a just an outline of um, of
+  these of three different objects. The the uh, front side, on the bottom
+  left, where the three pips are, I want that to look like the outline of a
+  pinball. Machine. I want the top to look like the um, um, to look like a
+  meeple, uh, the the design, uh, you know, for from a meeple design from a
+  board game, and then I want the last one to look like um, um, like a hand
+  of playing cards."* The agent's readings: the pinball machine as its side
+  profile (backbox, sloped cabinet, legs); the cards as three fanned.
+
+  *Added 2026-10-18*, shown the second drawing (cream outlines on the red
+  faces): *"I want to inverse the um, outline, though. So the outline uh,
+  the outlines should be red and um, it's like the the icon is engraved
+  within the die, um, as a solid white. [...] so just inverse the, the reds
+  and the whites in this case. And also shrink them down to be a little,
+  um, they're a little blocky. Um, this way I would like them to just be a
+  little more rounded in their edges. There shouldn't really be too many
+  sharp corners in, in the design. So a little more compact and, and and
+  rounded."*
+
+  *Added 2026-10-18*, shown the third drawing (solid cream shapes, red
+  edges): *"that looks good. I think the cards look the best. The um, the
+  meeple has a line through its head, that needs to be fixed. And I don't
+  think it needs to separate the the head from the body [...] it's almost
+  like a starfish in how it's designed, except it, it should still really
+  look be a be a meeple. Um, um the the arms don't need to be bigger than
+  the legs. [...] the pinball machine [...] the legs should kind of be an
+  extension of the the actual table portion of the pinball machine. Um, it
+  looks like they're just kind of glued on, so like the red outline, if
+  it's going to be outlining, it should outline the leg, like it should all
+  be one outline from the legs to the um, the machine, as well as um, you
+  know, with with probably only the score of the video um, screen on the
+  top, being the only red outline. Um, within the interior of the machine,
+  we can keep the little plunger as well [...] but I think we should kind
+  of smooth that out uh, all a little bit so everything is is looks
+  consistent."*
+
+  **Settled 2026-10-18**, on the fourth drawing: *"Yes, that looks good. Go
+  ahead and publish it."* Published as version 3. The icon is drawn in code
+  (an isometric die in signal red on warm black, cream shapes set into the
+  faces); the drawing script is not kept, the PNGs in `app/icons/` are the
+  artwork.
+
 ## Decisions
 
 Dated, append-only. Each says what was chosen, the alternative, why, who
@@ -338,7 +399,6 @@ decided, where it is enforced, and what it **serves**.
   a second line for Matt; the app has no iteration field. **Serves →** I3.
 
 **Open decisions — waiting on Matt, oldest first:**
-
 
 None.
 

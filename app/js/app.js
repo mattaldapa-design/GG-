@@ -3,7 +3,7 @@ import * as db from './db.js';
 import { esc, uid, todayIso, fmtDate, parseScore, fmtScore, initials, safeId, safeText, bestOf, leaderOf } from './util.js';
 import { SEED_CATEGORY, SEED_PLAYERS, SEED_GAMES, SEED_STERN } from './seed.js';
 
-const APP_VERSION = 2; // keep in step with VERSION in sw.js
+const APP_VERSION = 3; // keep in step with VERSION in sw.js
 const $ = (s, r = document) => r.querySelector(s);
 const $$ = (s, r = document) => [...r.querySelectorAll(s)];
 const app = $('#app');
