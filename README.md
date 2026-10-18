@@ -22,7 +22,7 @@ README-STANDARD.md   Starter Dough version 5
 CLAUDE.md            Starter Dough, as committed in 9c1fcb3
 reference/           Matt's pinball notes (text and screenshot) and his Stern
                      Insider scores (PDF and a table read from it), 2026-10-18
-app/                 the build, version 5: index.html, sw.js,
+app/                 the build, version 6: index.html, sw.js,
                      manifest.webmanifest, css/app.css, js/app.js, js/db.js,
                      js/util.js, js/seed.js, written by the agent;
                      css/darkroom-tokens.css and css/darkroom.css copied from
@@ -119,6 +119,27 @@ Next round moved to 2 of 2; 2, 8, 1 made 9, 11, 10 with Matt leading; a
 third Next round only said the last round was done → Finish said "Matt wins
 with 9"; "Pick the winner myself" listed the three and Sam was saved as the
 winner. No console errors.
+
+**Version 6, same day (I8, sharing the simple way):** a category page has
+"Share the list": a plain text list, one line per game with each player's
+best (or, in a games-played category, the nights and Matt's won-of-played),
+sent through the share sheet, else copied to the clipboard, else saved as a
+text file. A high-scores category also has "Add a person's scores": one
+screen that asks whose, when (optional), and lists every game with a score
+box; the filled-in ones become score lines on that person's tile on each
+game, with the tile made where they were not on it yet. Both are from a
+friend's list, not from a file; file matching stays set aside.
+
+**Verified 2026-10-18, version 6**, same browser, same size, with the
+share sheet stood in for by a stub: Pinball showed "Add a game", "Add a
+person's scores" and "Share the list" → the list came out as 47 lines,
+"Pinball — GG!" on top, "007: Matt 82,126,150" and "Addams Family: Matt
+34,251,560 · Jordan 24,000,000" among them, "Sent from GG! on Oct 18, 2026"
+last → the bulk screen listed all 43 games; tapping Jordan showed "has …"
+on his 18 games; Sam typed showed none → 12345678 formatted as 12,345,678
+→ Deadpool and Jaws filled, dated 10 Oct → "Added 2 scores for Sam." and
+Sam's tiles on those two games held the scores with the date. No console
+errors.
 
 **Published 2026-10-18:** workflow run 1 on commit `6951d49` succeeded
 16 seconds after the first push, without anyone switching Pages on by hand
@@ -472,6 +493,36 @@ struck.
   it can reflect against the highest score, lowest score, winning."*
 
   **Settled 2026-10-18** by that answer; built as version 5.
+
+- **I8 — Sharing, the simple way: export a readable list of games and
+  high scores to send to a friend, and a bulk-add screen that adds a person
+  and their scores across all the games in one go.** *(2026-10-18, drafted
+  by the agent.)* **Confirmed by Matt 2026-10-18**, shown the entry:
+  *"Yes, I8 is what I want. Build it."* Matt, thinking it through after
+  live scoring: *"what I'm using as my my base of of uh,
+  functionality is similar in the journaling project where if somebody has
+  the same date and they share the day with you, their moments will come in
+  as their own and you can import them into that same day because they
+  share the same actual date. [...] I don't know if it's going to work the
+  same. [...] the worst thing that I can do is I can just add them as
+  another person and, and count their score next to mine. [...] The only
+  thing that I think that will be is it'll be a lot of um, it'd be a lot of
+  coordinating. So the way that I'm trying to think of it first is that I
+  think what we should really do is focus on what what are we exporting?
+  And I would say we can export a list of games um, to share out with
+  somebody, and then they can just look at that list of what your highest
+  scores are. For what games, and then they can just add them like maybe
+  there is a, a bulk add feature of the games like of all your cabinets
+  that you already have installed in your game, and you can just easily add
+  a person and add their scores to that from just one screen that lists
+  them out as you're adding a person."* Set aside by Matt for now: a
+  file import that matches a friend's games to his by name, the journal's
+  way (by date). The agent's readings: the export is a plain, readable
+  list (text or a picture for the share sheet), one category at a time or
+  all; the bulk-add screen lives in a high-scores category, lists its
+  games with a score box each, and skips the ones left blank.
+
+  **Settled 2026-10-18:** confirmed, and built as version 6.
 
 ## Decisions
 

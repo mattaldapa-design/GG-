@@ -3,7 +3,7 @@ import * as db from './db.js';
 import { esc, uid, todayIso, fmtDate, parseScore, fmtScore, initials, safeId, safeText, bestOf, leaderOf } from './util.js';
 import { SEED_CATEGORY, SEED_PLAYERS, SEED_GAMES, SEED_STERN, SEED_BOARD } from './seed.js';
 
-const APP_VERSION = 5; // keep in step with VERSION in sw.js
+const APP_VERSION = 6; // keep in step with VERSION in sw.js
 const $ = (s, r = document) => r.querySelector(s);
 const $$ = (s, r = document) => [...r.querySelectorAll(s)];
 const app = $('#app');
@@ -196,6 +196,7 @@ async function render() {
       if (!cat) return await home();
       if (p.length === 2) return await categoryPage(cat);
       if (p[2] === 'new') return newGame(cat);
+      if (p[2] === 'bulk') return await bulkAddPage(cat);
     }
     if (p[0] === 'g') {
       const game = await db.get('games', p[1]);
@@ -341,7 +342,7 @@ async function categoryPage(cat) {
       <div class="gg-seg" role="group" aria-label="View"><button class="${gameView === 'tiles' ? 'is-on' : ''}" data-view="tiles">Tiles</button><button class="${gameView === 'list' ? 'is-on' : ''}" data-view="list">List</button></div>
     </div>` : ''}
     <div id="games">${listHtml()}</div>
-    <div class="gg-bar"><button class="dr-btn" data-go="/c/${cat.id}/new">Add a game</button></div>
+    <div class="gg-bar"><button class="dr-btn" data-go="/c/${cat.id}/new">Add a game</button>${kindOf(cat) === 'scores' && games.length ? `<button class="dr-btn dr-btn--quiet" data-go="/c/${cat.id}/bulk">Add a person’s scores</button>` : ''}${games.length ? `<button class="dr-btn dr-btn--ghost" id="share">Share the list</button>` : ''}</div>
     <div class="gg-bar gg-endbar"><button class="dr-btn dr-btn--ghost dr-btn--sm" id="delete">Delete ${esc(cat.name)}</button></div>
   </div>`)) return;
   bindGo();
@@ -350,10 +351,83 @@ async function categoryPage(cat) {
   if (search) search.oninput = () => { gameQuery = search.value; redraw(); };
   $$('[data-view]').forEach((b) => { b.onclick = () => { gameView = b.dataset.view; try { localStorage.setItem('gg-view', gameView); } catch { /* fine */ } $$('[data-view]').forEach((x) => x.classList.toggle('is-on', x === b)); redraw(); }; });
   $('#rename').onclick = () => renameInline($('#title'), cat.name, async (v) => { cat.name = v; await touch('categories', cat); render(); });
+  const shareBtn = $('#share');
+  if (shareBtn) shareBtn.onclick = () => shareList(cat, games, players, nights);
   $('#delete').onclick = async () => {
     const n = games.length;
     if (!(await confirmSheet(`Delete ${cat.name}${n ? ` and its ${plural(n, 'game')}` : ''}?`, `Yes, delete ${cat.name}`))) return;
     await deleteCategory(cat); toast(`${cat.name} deleted.`); go('/');
+  };
+}
+
+// A readable list of the category's games and scores, for the share sheet (I8).
+async function shareList(cat, games, players, nights) {
+  const me = await db.setting('yourName', '');
+  const lines = [`${cat.name} — GG!`, ''];
+  for (const g of games) {
+    if (kindOf(cat) === 'nights') {
+      const ns = nights.filter((n) => n.gameId === g.id);
+      const t = totalsFor(me, ns);
+      lines.push(`${g.name}: ${plural(ns.length, 'night')}${me && t.played ? `, ${me} won ${t.won} of ${t.played}` : ''}`);
+      continue;
+    }
+    const ps = players.filter((p) => p.gameId === g.id).map((p) => ({ p, best: bestOf(p) })).filter((x) => x.best).sort((a, b) => b.best.value - a.best.value);
+    lines.push(`${g.name}: ${ps.length ? ps.map((x) => `${x.p.name} ${fmtScore(x.best.value)}`).join(' · ') : 'no scores yet'}`);
+  }
+  lines.push('', `Sent from GG! on ${fmtDate(todayIso())}`);
+  const text = lines.join('\n');
+  if (navigator.share) {
+    try { await navigator.share({ title: `${cat.name} — GG!`, text }); return; } catch (e) { if (e.name === 'AbortError') return; }
+  }
+  try { await navigator.clipboard.writeText(text); toast('List copied. Paste it anywhere.'); return; } catch { /* fall through */ }
+  const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([text], { type: 'text/plain' })); a.download = `${cat.name} — GG!.txt`; a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+  toast('List saved.');
+}
+
+// One screen to add a person and their scores across every game in the category (I8).
+async function bulkAddPage(cat) {
+  const my = renderSeq;
+  const games = (await gamesOf(cat.id)).sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: 'base' }));
+  const names = await knownNames();
+  const players = await db.all('players');
+  if (stale(my)) return;
+  trail([{ t: 'Home', h: '/' }, { t: cat.name, h: `/c/${cat.id}` }, { t: 'Add scores' }], `/c/${cat.id}`);
+  let who = '';
+  const bestLine = (g, name) => { const p = players.find((x) => x.gameId === g.id && sameName(x.name, name)); const b = p && bestOf(p); return b ? `has ${fmtScore(b.value)}` : ''; };
+  if (!paint(my, `<div class="gg-stack">
+    <div><div class="dr-eyebrow">${esc(cat.name)}</div><h1 class="dr-title-xl">Add a person’s scores</h1>
+      <p class="dr-body-sm">Fill in the games they have a score on and leave the rest blank. A game they are already on gets a new score line.</p></div>
+    <div class="dr-field"><label>Whose scores?</label>
+      ${names.length ? `<div class="gg-chips" id="chips">${names.map((n) => `<button class="gg-chip" data-name="${esc(n)}">${esc(n)}</button>`).join('')}</div>` : ''}
+      <input class="dr-input" id="who" placeholder="${names.length ? 'Or someone new' : 'Their name'}" autocapitalize="words" autocomplete="off"></div>
+    <div class="dr-field"><label for="when">When were these set?</label><input class="dr-input" id="when" type="date"><div class="dr-field__hint">Leave it empty if you don’t know.</div></div>
+    <div class="dr-list" id="rows">${games.map((g) => `<div class="gg-bulk" data-g="${g.id}"><div class="dr-row__text"><div class="dr-row__title">${esc(g.name)}</div><div class="dr-row__meta" data-has="${g.id}"></div></div><input class="dr-input gg-bulk__score" inputmode="numeric" placeholder="Score" aria-label="${esc(g.name)} score" data-score="${g.id}"></div>`).join('')}</div>
+    <div class="gg-bar"><button class="dr-btn" id="save">Add the scores</button><button class="dr-btn dr-btn--ghost" data-go="/c/${cat.id}">Never mind</button></div>
+  </div>`)) return;
+  bindGo();
+  const whoIn = $('#who');
+  const setWho = (n) => { who = n.trim(); $$('[data-name]').forEach((b) => b.classList.toggle('is-on', sameName(b.dataset.name, who))); games.forEach((g) => { $(`[data-has="${g.id}"]`).textContent = who ? bestLine(g, who) : ''; }); };
+  $$('[data-name]').forEach((b) => { b.onclick = () => { whoIn.value = b.dataset.name; setWho(b.dataset.name); }; });
+  whoIn.oninput = () => setWho(whoIn.value);
+  $$('[data-score]').forEach((inp) => { inp.oninput = () => { const n = parseScore(inp.value); inp.value = n == null ? '' : fmtScore(n); }; });
+  $('#save').onclick = async () => {
+    if (!who) { whoIn.focus(); toast('Whose scores are these?'); return; }
+    const date = $('#when').value || '';
+    const now = Date.now();
+    let added = 0;
+    for (const g of games) {
+      const v = parseScore($(`[data-score="${g.id}"]`).value);
+      if (v == null) continue;
+      let p = (await playersOf(g.id)).find((x) => sameName(x.name, who));
+      if (!p) p = { id: uid(), gameId: g.id, name: who, order: (await playersOf(g.id)).length, createdAt: now, updatedAt: now, scores: [] };
+      p.scores.push({ id: uid(), value: v, date, where: '', photoId: null, createdAt: now });
+      await touch('players', p);
+      added += 1;
+    }
+    if (!added) { toast('No scores filled in yet.'); return; }
+    toast(`Added ${plural(added, 'score')} for ${who}.`);
+    go(`/c/${cat.id}`);
   };
 }
 
@@ -902,6 +976,7 @@ const HOW_IT_WORKS = [
   ['Scores', 'In a high-scores category, tap + on a game to add a player, then their score, with the date, where it was and a photo of it. A player can keep every score they ever got; the best one shows outside.'],
   ['Score it live', 'Starting a night, or a round, choose Score it live: who is playing, whether the highest or the lowest score wins, a score to play to if there is one, rounds if it is played in rounds. Then +1 or any number of points per person as they happen, Undo if a finger slips, and Finish the game when it is over: the round lands on the night with its winner.'],
   ['Game nights', 'In a games-played category, tap + on a game the night you play it. Each round gets who played, scores if you keep them, and who won; several rounds can share a night. The top of the game keeps your totals, under the name you put in Settings.'],
+  ['Sharing', 'Share the list on a category sends a plain list of its games and scores to a text, a note, anywhere. Add a person’s scores takes a friend’s list and puts their scores on every game in one go.'],
   ['Back up', 'Back up makes one file with everything in it, pictures included, for Files, iCloud, a text, anywhere. Import a backup brings it back onto a phone.'],
   ['Yours', 'Everything stays on this phone until you send it. Nothing is uploaded, nothing needs an account.'],
 ];
