@@ -4,7 +4,7 @@ import { esc, uid, todayIso, fmtDate, parseScore, fmtScore, initials, safeId, sa
 import { SEED_CATEGORY, SEED_PLAYERS, SEED_GAMES, SEED_STERN, SEED_BOARD } from './seed.js';
 import { SYMBOLS, symbolFor, randomSymbol, symbolSvg } from './symbols.js';
 
-const APP_VERSION = 11; // keep in step with VERSION in sw.js
+const APP_VERSION = 12; // keep in step with VERSION in sw.js
 const $ = (s, r = document) => r.querySelector(s);
 const $$ = (s, r = document) => [...r.querySelectorAll(s)];
 const app = $('#app');
@@ -27,9 +27,13 @@ const bindGo = () => $$('[data-go]').forEach((el) => {
   el.addEventListener('click', () => go(el.dataset.go));
   el.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); go(el.dataset.go); } });
 });
-const tone = (i) => i % 4;
-// A tile with no picture shows its symbol on a tone (I11).
-const symFace = (thing, i) => `<div class="dr-cover--type gg-symtile" data-tone="${tone(i)}" style="position:absolute;inset:0">${symbolSvg(symbolFor(thing.symbol, thing.id))}</div>`;
+// The sleeve rack (Dark Room, 20 Oct 2026): colours for things, not chrome. A category wears one sleeve, its games'
+// symbol tiles with it; the players on a game wear the sleeve two along, so a screen shows at most two beside signal.
+const SLEEVES = ['tangerine', 'gold', 'leaf', 'lilac', 'lagoon'];
+const sleeveOf = (cat) => (SLEEVES.includes(cat?.sleeve) ? cat.sleeve : SLEEVES[(cat?.order ?? 0) % SLEEVES.length]);
+const playerSleeve = (cat) => SLEEVES[(SLEEVES.indexOf(sleeveOf(cat)) + 2) % SLEEVES.length];
+// A tile with no picture shows its symbol on its sleeve (I11, I12).
+const symFace = (thing, sleeve) => `<div class="dr-cover--type dr-cover--sleeve dr-cover--${sleeve} gg-symtile" data-sleeve="${sleeve}" style="position:absolute;inset:0">${symbolSvg(symbolFor(thing.symbol, thing.id))}</div>`;
 const plural = (n, w) => `${n} ${w}${n === 1 ? '' : 's'}`;
 
 // A bottom sheet of choices. Resolves with the chosen key, or null.
@@ -256,7 +260,7 @@ async function home() {
   const tiles = cats.map((c, i) => {
     const n = games.filter((g) => g.categoryId === c.id).length;
     return `<button class="dr-tile" data-go="/c/${c.id}">
-      <div class="dr-cover">${symFace(c, i)}<span class="dr-badge gg-cover-badge">${plural(n, 'game')}</span></div>
+      <div class="dr-cover">${symFace(c, sleeveOf(c))}<span class="dr-badge gg-cover-badge">${plural(n, 'game')}</span></div>
       <div class="dr-tile__title">${esc(c.name)}</div>
       <div class="dr-tile__meta">${n ? plural(n, 'game') : 'Nothing in here yet'}</div>
     </button>`;
@@ -295,7 +299,7 @@ function newCategory() {
     const name = input.value.trim(); if (!name) { input.focus(); return; }
     const n = (await db.all('categories')).length;
     const now = Date.now();
-    const c = { id: uid(), name, kind, symbol: randomSymbol(), order: n, createdAt: now, updatedAt: now };
+    const c = { id: uid(), name, kind, symbol: randomSymbol(), sleeve: SLEEVES[n % SLEEVES.length], order: n, createdAt: now, updatedAt: now };
     await db.put('categories', c);
     go(`/c/${c.id}`);
   };
@@ -341,7 +345,7 @@ async function categoryPage(cat) {
   };
   const tile = (g, i) => {
     const { ph, meta } = info(g);
-    const face = ph ? `<img src="${photoUrl(ph)}" alt="">` : symFace(g, i);
+    const face = ph ? `<img src="${photoUrl(ph)}" alt="">` : symFace(g, sleeveOf(cat));
     return `<button class="dr-tile" data-go="/g/${g.id}"><div class="dr-cover">${face}</div>
       <div class="dr-tile__title">${esc(g.name)}</div><div class="dr-tile__meta">${meta}</div></button>`;
   };
@@ -496,8 +500,8 @@ async function gamePage(cat, game) {
   if (!paint(my, `<div class="gg-stack">
     <div><div class="dr-eyebrow">${esc(cat.name)}</div>
       <div class="gg-titlerow"><h1 class="dr-title-xl" id="title">${esc(game.name)}</h1><button class="gg-pencil" id="rename" aria-label="Rename the game">✎</button></div></div>
-    ${gamePicHtml(game, gamePic)}
-    ${scoresSection(game, players, pic, `<div class="gg-empty"><p class="dr-body-lg">Nobody on ${esc(game.name)} yet. Tap + to add a player and their score.</p></div>`)}
+    ${gamePicHtml(game, gamePic, sleeveOf(cat))}
+    ${scoresSection(game, players, pic, playerSleeve(cat), `<div class="gg-empty"><p class="dr-body-lg">Nobody on ${esc(game.name)} yet. Tap + to add a player and their score.</p></div>`)}
     <div class="gg-bar gg-endbar"><button class="dr-btn dr-btn--ghost dr-btn--sm" id="delete">Delete ${esc(game.name)}</button></div>
   </div>
   <button class="dr-btn dr-btn--icon gg-fab" data-go="/g/${game.id}/add" aria-label="Add a player">+</button>`)) return;
@@ -511,26 +515,26 @@ async function gamePage(cat, game) {
 }
 
 // The high score and the ranked player tiles, shared by the high-scores page and the Both page.
-function scoresSection(game, players, pic, emptyText) {
+function scoresSection(game, players, pic, sleeve, emptyText) {
   const lead = leaderOf(players);
   const when = (sc) => [sc.date ? fmtDate(sc.date) : '', sc.where].filter(Boolean).join(' · ');
   const ranked = players.map((p) => ({ p, best: bestOf(p) })).sort((a, b) => (b.best?.value ?? -1) - (a.best?.value ?? -1));
   const tiles = ranked.map(({ p, best }, i) => {
     const ph = pic(p.photoId) || (best ? pic(best.photoId) : null);
-    const face = ph ? `<img src="${photoUrl(ph)}" alt="">` : symFace(p, players.indexOf(p));
+    const face = ph ? `<img src="${photoUrl(ph)}" alt="">` : symFace(p, sleeve);
     return `<button class="dr-tile" data-go="/g/${game.id}/p/${p.id}"><div class="dr-cover">${face}${best ? `<span class="gg-cover-rank">#${i + 1}</span>` : ''}</div>
       <div class="dr-tile__title">${esc(p.name)}</div><div class="dr-tile__meta">${best ? `${fmtScore(best.value)}${best.date ? ' · ' + fmtDate(best.date) : ''}` : 'No score yet'}</div></button>`;
   });
-  const hero = lead ? `<section class="dr-panel gg-hero"><div class="dr-eyebrow">High score</div><div class="dr-big-number">${fmtScore(lead.best.value)}</div><div class="gg-hero__who">${esc(lead.player.name)}</div>${when(lead.best) ? `<div class="dr-body-sm">${esc(when(lead.best))}</div>` : ''}</section>` : '';
+  const hero = lead ? `<section class="dr-field-plum gg-hero"><div class="dr-eyebrow">High score</div><div class="dr-big-number">${fmtScore(lead.best.value)}</div><div class="gg-hero__who">${esc(lead.player.name)}</div>${when(lead.best) ? `<div class="dr-body-sm">${esc(when(lead.best))}</div>` : ''}</section>` : '';
   return `${hero}${players.length ? `<div class="dr-shelf">${tiles.join('')}</div>` : emptyText}`;
 }
 // Score photos on a game, offered as the game's picture.
 const scorePicsOf = (players, pic) => { const out = []; for (const p of players) for (const sc of p.scores || []) if (sc.photoId && pic(sc.photoId)) out.push({ k: sc.photoId, label: `Use ${p.name}’s ${fmtScore(sc.value)} photo` }); return out; };
 
 // The game's own picture (I4): a slot at the top of its page, set from the library or from a photo already on the game.
-function gamePicHtml(game, gamePic) {
+function gamePicHtml(game, gamePic, sleeve) {
   const label = gamePic ? `Change the picture of ${esc(game.name)}` : `Add a picture of ${esc(game.name)}`;
-  const face = gamePic ? `<img src="${photoUrl(gamePic)}" alt="">` : `<span class="gg-gamepic__empty"><span class="gg-gamepic__sym" data-tone="${tone(0)}">${symbolSvg(symbolFor(game.symbol, game.id))}</span><b>Add a picture of ${esc(game.name)}</b><span class="dr-caption">Or pick a different symbol. Either shows here and on the tile.</span></span>`;
+  const face = gamePic ? `<img src="${photoUrl(gamePic)}" alt="">` : `<span class="gg-gamepic__empty"><span class="gg-gamepic__sym dr-cover--sleeve dr-cover--${sleeve}" data-sleeve="${sleeve}">${symbolSvg(symbolFor(game.symbol, game.id))}</span><b>Add a picture of ${esc(game.name)}</b><span class="dr-caption">Or pick a different symbol. Either shows here and on the tile.</span></span>`;
   return `<button class="dr-cover gg-gamepic ${gamePic ? 'has-picture' : ''}" id="gamePic" aria-label="${label}">${face}</button>
     <input type="file" accept="image/*" id="gamePicIn" hidden aria-label="Picture of the game">`;
 }
@@ -588,17 +592,17 @@ async function nightsGamePage(cat, game) {
   const nightPics = nights.filter((n) => n.photoId && pic(n.photoId)).map((n) => ({ k: n.photoId, label: `Use the ${shortDate(n.date)} photo` }));
   // In a "both" category the high scores sit above the nights (I10).
   nightPics.push(...scorePicsOf(players, pic));
-  const scoresHtml = both ? scoresSection(game, players, pic, `<p class="dr-body-sm">No high scores on ${esc(game.name)} yet. Tap + and choose a high score.</p>`) : '';
+  const scoresHtml = both ? scoresSection(game, players, pic, playerSleeve(cat), `<p class="dr-body-sm">No high scores on ${esc(game.name)} yet. Tap + and choose a high score.</p>`) : '';
   const tiles = nights.map((n, i) => {
     const ph = pic(n.photoId);
-    const face = ph ? `<img src="${photoUrl(ph)}" alt="">` : `<div class="dr-cover--type" data-tone="${tone(i)}" style="position:absolute;inset:0"><span>${esc(shortDate(n.date))}</span></div>`;
+    const face = ph ? `<img src="${photoUrl(ph)}" alt="">` : `<div class="dr-cover--type dr-cover--sleeve dr-cover--${sleeveOf(cat)}" data-sleeve="${sleeveOf(cat)}" style="position:absolute;inset:0"><span>${esc(shortDate(n.date))}</span></div>`;
     return `<button class="dr-tile" data-go="/g/${game.id}/n/${n.id}"><div class="dr-cover">${face}</div>
       <div class="dr-tile__title">${esc(n.date ? fmtDate(n.date) : 'Undated')}</div><div class="dr-tile__meta">${nightLine(n)}</div></button>`;
   });
   if (!paint(my, `<div class="gg-stack">
     <div><div class="dr-eyebrow">${esc(cat.name)}</div>
       <div class="gg-titlerow"><h1 class="dr-title-xl" id="title">${esc(game.name)}</h1><button class="gg-pencil" id="rename" aria-label="Rename the game">✎</button></div></div>
-    ${gamePicHtml(game, gamePic)}
+    ${gamePicHtml(game, gamePic, sleeveOf(cat))}
     ${scoresHtml}
     <section class="dr-panel gg-stack gg-stack--tight">
       <div class="dr-eyebrow">${me ? esc(me) + ' on ' + esc(game.name) : 'Your ' + esc(game.name)}${both ? ' · nights' : ''}</div>
@@ -684,7 +688,7 @@ async function nightPage(cat, game, night, mode) {
       <div class="dr-field"><label for="where">Where <span class="gg-opt">optional</span></label><input class="dr-input" id="where" value="${esc(night.where || '')}" placeholder="Whose place, which bar…" autocapitalize="words" autocomplete="off"></div>
     </div>
     ${editing ? roundForm(editing, night.rounds.indexOf(editing) + 1 || night.rounds.length + 1, known) : ''}
-    ${night.live ? `<section class="dr-panel gg-bar gg-bar--between"><div><div class="dr-eyebrow">Live now</div><div class="dr-body">${esc(night.live.players.map((p) => `${p.name} ${fmtScore(p.total)}`).join(' · '))}</div></div><button class="dr-btn" data-go="/g/${game.id}/n/${night.id}/live">Back to the board</button></section>` : ''}
+    ${night.live ? `<section class="dr-hint gg-bar gg-bar--between"><div><div class="dr-eyebrow">Live now</div><div class="dr-body">${esc(night.live.players.map((p) => `${p.name} ${fmtScore(p.total)}`).join(' · '))}</div></div><button class="dr-btn" data-go="/g/${game.id}/n/${night.id}/live">Back to the board</button></section>` : ''}
     ${!editing && !night.live ? `<div class="gg-bar"><button class="dr-btn" data-go="/g/${game.id}/n/${night.id}/live">Score ${night.rounds.length ? 'the next' : 'the'} round live</button><button class="dr-btn dr-btn--quiet" data-go="/g/${game.id}/n/${night.id}/new">Write it down</button></div>` : ''}
     ${rows.length ? `<div><div class="dr-eyebrow">${plural(rows.length, 'round')}</div><div class="dr-list">${rows.join('')}</div></div>` : ''}
     <div class="gg-bar gg-endbar"><button class="dr-btn dr-btn--ghost dr-btn--sm" id="remove">Delete this night</button></div>
@@ -732,7 +736,7 @@ async function livePage(cat, game, night, mode) {
   const leaders = leadersOf(live);
   const status = [live.winBy === 'low' ? 'Lowest wins' : 'Highest wins', live.target ? `playing to ${fmtScore(live.target)}` : '', live.rounds ? `round ${live.round} of ${live.rounds}` : ''].filter(Boolean).join(' · ');
   const cards = live.players.map((p, i) => `<section class="dr-panel gg-lp ${leaders.includes(p.name) && live.players.length > 1 ? 'is-leading' : ''}" data-i="${i}">
-      <div class="gg-lp__head"><span class="gg-lp__name">${esc(p.name)}</span>${leaders.includes(p.name) && live.players.length > 1 ? '<span class="dr-badge dr-badge--accent">Leading</span>' : ''}</div>
+      <div class="gg-lp__head"><span class="gg-lp__name">${esc(p.name)}</span>${leaders.includes(p.name) && live.players.length > 1 ? '<span class="dr-badge dr-badge--gold">Leading</span>' : ''}</div>
       <div class="gg-lp__total">${fmtScore(p.total)}</div>
       <div class="gg-lp__btns"><span class="gg-lp__more"><input class="dr-input" inputmode="decimal" placeholder="This turn" aria-label="Points for ${esc(p.name)} this turn" data-more="${i}"><button class="dr-btn gg-lp__add" data-addmore="${i}">Add</button></span>
         <button class="dr-btn dr-btn--quiet dr-btn--sm" data-add="${i}" data-n="-1" aria-label="Take a point from ${esc(p.name)}">−1</button><button class="dr-btn dr-btn--quiet dr-btn--sm" data-add="${i}" data-n="1" aria-label="A point for ${esc(p.name)}">+1</button></div>
@@ -955,7 +959,7 @@ async function playerPage(cat, game, player, mode) {
   const form = editing ? scoreForm(editing, pic(editing.photoId)) : '';
   const face = pic(player.photoId);
   if (!paint(my, `<div class="gg-stack">
-    <div class="gg-bar"><button class="gg-face ${face ? '' : 'gg-face--sym'}" id="playerPic" data-tone="${tone(player.order ?? 0)}" aria-label="Picture of ${esc(player.name)}">${face ? `<img src="${photoUrl(face)}" alt="">` : symbolSvg(symbolFor(player.symbol, player.id))}</button><input type="file" accept="image/*" id="playerPicIn" hidden aria-label="Picture of ${esc(player.name)}">
+    <div class="gg-bar"><button class="gg-face ${face ? '' : 'gg-face--sym dr-cover--sleeve dr-cover--' + playerSleeve(cat)}" id="playerPic" data-sleeve="${playerSleeve(cat)}" aria-label="Picture of ${esc(player.name)}">${face ? `<img src="${photoUrl(face)}" alt="">` : symbolSvg(symbolFor(player.symbol, player.id))}</button><input type="file" accept="image/*" id="playerPicIn" hidden aria-label="Picture of ${esc(player.name)}">
       <div class="gg-grow"><div class="dr-eyebrow">${esc(game.name)}</div>
         <div class="gg-titlerow"><h1 class="dr-title-xl" id="title">${esc(player.name)}</h1><button class="gg-pencil" id="rename" aria-label="Rename">✎</button></div></div></div>
     ${form}
@@ -1054,7 +1058,7 @@ async function symbolPage(what, id) {
   trail([{ t: 'Home', h: '/' }, { t: thing.name, h: back }, { t: 'Symbol' }], back);
   app.innerHTML = `<div class="gg-stack">
     <div><div class="dr-eyebrow">${esc(thing.name)}</div><h1 class="dr-title-xl">Pick a symbol</h1></div>
-    <div class="gg-symgrid">${SYMBOLS.map((sy, i) => `<button class="gg-symbtn ${sy[0] === current ? 'is-on' : ''}" data-sym="${sy[0]}" data-tone="${tone(i)}" aria-label="${esc(sy[1])}">${symbolSvg(sy[0])}</button>`).join('')}</div>
+    <div class="gg-symgrid">${SYMBOLS.map((sy, i) => `<button class="gg-symbtn dr-cover--sleeve dr-cover--${SLEEVES[i % SLEEVES.length]} ${sy[0] === current ? 'is-on' : ''}" data-sym="${sy[0]}" data-sleeve="${SLEEVES[i % SLEEVES.length]}" aria-label="${esc(sy[1])}">${symbolSvg(sy[0])}</button>`).join('')}</div>
     <div class="gg-bar"><button class="dr-btn dr-btn--ghost" data-go="${back}">Never mind</button></div>
   </div>`;
   bindGo();
@@ -1137,7 +1141,7 @@ async function importBackup(file) {
   if (!pack || pack.app !== 'gg' || !Array.isArray(pack.categories)) { toast('That file is not a GG! backup.'); return; }
   const now = Date.now();
   const cats = [], games = [], players = [], photos = [];
-  for (const c of pack.categories) { const id = safeId(c.id); if (id) cats.push({ id, name: safeText(c.name) || 'Untitled', kind: c.kind === 'nights' || c.kind === 'both' ? c.kind : 'scores', symbol: safeText(c.symbol, 24), order: Number(c.order) || 0, createdAt: Number(c.createdAt) || now, updatedAt: Number(c.updatedAt) || now }); }
+  for (const c of pack.categories) { const id = safeId(c.id); if (id) cats.push({ id, name: safeText(c.name) || 'Untitled', kind: c.kind === 'nights' || c.kind === 'both' ? c.kind : 'scores', symbol: safeText(c.symbol, 24), sleeve: SLEEVES.includes(c.sleeve) ? c.sleeve : undefined, order: Number(c.order) || 0, createdAt: Number(c.createdAt) || now, updatedAt: Number(c.updatedAt) || now }); }
   const catIds = new Set(cats.map((c) => c.id));
   for (const g of pack.games || []) { const id = safeId(g.id), cid = safeId(g.categoryId); if (id && cid && catIds.has(cid)) games.push({ id, categoryId: cid, name: safeText(g.name) || 'Untitled', howToScore: safeText(g.howToScore, 500), symbol: safeText(g.symbol, 24), order: Number(g.order) || 0, createdAt: Number(g.createdAt) || now, updatedAt: Number(g.updatedAt) || now }); }
   const gameIds = new Set(games.map((g) => g.id));

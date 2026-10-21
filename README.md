@@ -22,11 +22,11 @@ README-STANDARD.md   Starter Dough version 5
 CLAUDE.md            Starter Dough, as committed in 9c1fcb3
 reference/           Matt's pinball notes (text and screenshot) and his Stern
                      Insider scores (PDF and a table read from it), 2026-10-18
-app/                 the build, version 11: index.html, sw.js,
+app/                 the build, version 12: index.html, sw.js,
                      manifest.webmanifest, css/app.css, js/app.js, js/db.js,
                      js/util.js, js/seed.js, js/symbols.js, written by the agent;
                      css/darkroom-tokens.css and css/darkroom.css copied from
-                     the Dark Room kit; icons/ is the die icon Matt settled
+                     the Dark Room kit (its 20 Oct 2026 files since version 12); icons/ is the die icon Matt settled
                      on (I5), drawn in code
 .claude/launch.json  the preview server for the desktop app
 .github/workflows/   pages.yml, ready for when Matt publishes (not yet used)
@@ -227,6 +227,27 @@ on the third card kept the page at 295px → 50, 100, Next round (2 of 3),
 with Matt dropped: the sheet's columns read Jordan and sam, Jordan's +100
 and sam's +1 stayed in their own columns, totals 100 and 1. No console
 errors.
+
+**Version 12, 2026-10-21 (I12, the Dark Room repaint):** the kit's
+20 October tokens and stylesheet copied in, so every panel is lit by the
+one lamp from the top left, raised and floating things carry the named
+elevations and the light edge, and grain scales by surface. The sleeve
+rack replaces the four cycling tones: a category wears one sleeve
+(tangerine, gold, leaf, lilac, lagoon by its order, kept on the record
+for new ones) and its symbol tiles, night covers and picture slot take
+that sleeve's gradient; the players on a game wear the sleeve two along,
+so a screen shows two sleeves beside signal. The high score is the app's
+one plum field, with the loud number on it. "Live now" on a night is a
+peach hint; "Leading" on the live board is gold. The symbol picker cycles
+the rack. Gradient sleeves are the kit's provisional form; if Matt pulls
+them, `.dr-cover--flat` on the symbol tiles is the fallback.
+
+**Verified 2026-10-21, version 12**, same browser, same size: Home showed
+Pinball in tangerine and Tabletop games in gold, each with its symbol and
+badge → Pinball's 43 tiles all wore tangerine → Spider-Man showed the
+symbol slot in tangerine, the high score on plum with peach eyebrow and
+cream number, and Matt and Jordan in leaf → Catan's totals panel carried
+the lamp. No console errors.
 
 **Published 2026-10-18:** workflow run 1 on commit `6951d49` succeeded
 16 seconds after the first push, without anyone switching Pages on by hand
@@ -714,6 +735,37 @@ struck.
   **Settled 2026-10-18**, on the second sheet: *"Yes, that's the look."*
   Built as version 9.
 
+- **I12 — A fresh coat of paint from the updated Dark Room kit (sleeve
+  rack and depth, 20 Oct 2026), for more visual variety.** *(2026-10-20,
+  drafted by the agent; not yet confirmed by Matt.)* Matt: *"the darkroom
+  style design that I have incorporated into this project just received
+  some updates. I think it'd be nice to try and incorporate them into the
+  design that we already have currently. That way it has like a little bit
+  of a fresh coat of paint based on some of the feedback I had. [...] apply
+  the kit and give the app a little more visual variety given the
+  expansion of the design kit."* What the kit added, read by the agent in
+  the dark-room skill folder (the same files as `D:\UI Guide\Dark Room\`):
+  sleeve colours (tangerine, gold, leaf, lilac, lagoon) for things rather
+  than chrome, at most two per screen beside signal; plum as the one other
+  large field; peach and rose tints; a heat ramp; gradient sleeves
+  (provisional, `.dr-cover--flat` the fallback); one lamp lighting every
+  panel from the top left, three named elevations, grain scaled by surface.
+  The agent's draft of how it lands on GG!: the kit's new tokens and
+  stylesheet copied in; each category wears one sleeve and its symbol tiles
+  take that sleeve (so a shelf shows one sleeve beside signal, not four
+  tones); players in a second sleeve; the high score panel as the one plum
+  field; sleeve badges on the Home tiles; "Live now" as a peach hint. The
+  kit's own working rule asks for a `ui-refresh/<app>` branch made by Matt
+  before any restyle; none exists here, and the agent asked.
+
+  **Confirmed by Matt 2026-10-21** in substance, with the Decision below on
+  where it runs: *"you can make these updates and add these kind of
+  cosmetic changes to your main thread."* The mapping above is still the
+  agent's draft until Matt sees it.
+
+  **Settled 2026-10-21**, shown four screens: *"Yes, that's the look."*
+  Built as version 12.
+
 ## Decisions
 
 Dated, append-only. Each says what was chosen, the alternative, why, who
@@ -787,6 +839,19 @@ decided, where it is enforced, and what it **serves**.
   Pinball from the seed is `scores`. *Widened 2026-10-18 by I10:* a third
   kind, `both`, and the kind can be changed on the category's page.
   **Serves →** I6, I10, Goal.
+
+- **2026-10-21 — The Dark Room repaint runs on this project's branch, as
+  version 12, not on a `ui-refresh/gg` branch.** Matt: *"the dark room was
+  implemented from the start on this project. So the stuff about the
+  separate branch was mostly intended for projects that that I designed
+  dark room after they're created. And so I wanted to make sure that it
+  didn't impact the design, but since it's already kind of built in, to
+  it, you can make these updates and add these kind of cosmetic changes to
+  your main thread."* Alternative: the kit's playbook (a branch Matt makes,
+  a baseline pass, a report before merging). Why it lost: the playbook
+  guards apps restyled after the fact; GG! wore Dark Room from its first
+  commit. Enforced: this branch, pushed as `main` like every version.
+  **Serves →** I12.
 
 **Open decisions — waiting on Matt, oldest first:**
 
