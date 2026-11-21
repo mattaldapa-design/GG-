@@ -32,7 +32,9 @@ app/                 the build, version 12: index.html, sw.js,
 .github/workflows/   pages.yml, ready for when Matt publishes (not yet used)
 git                  remote: github.com/mattaldapa-design/GG- (Matt made it
                      2026-10-18); the local branch claude/project-kickoff-985f79
-                     is pushed there as main, the default branch
+                     is pushed there as main, the default branch. Since
+                     2026-11-20 the project folder's own branch, master in
+                     D:\Friendly Competition, holds the same commits
 ```
 
 Started from a portion of Starter Dough (commit `9c1fcb3`, standard
@@ -852,6 +854,17 @@ decided, where it is enforced, and what it **serves**.
   guards apps restyled after the fact; GG! wore Dark Room from its first
   commit. Enforced: this branch, pushed as `main` like every version.
   **Serves →** I12.
+
+- **2026-11-20 — All the work is moved onto the project folder's own
+  branch.** Matt: *"can you move this all to the main branch"*. Before
+  this, `master` in `D:\Friendly Competition` held only the seed commit
+  while every version sat on `claude/project-kickoff-985f79` (and on
+  GitHub's `main`). Done as a fast-forward of `master` to the same commit,
+  so nothing was rewritten. The agent's reading: "the main branch" is the
+  local one in the project folder, since GitHub's `main` already had
+  everything. Alternative: leave `master` at the seed and keep working
+  only in the worktree. Enforced: `master` in the project folder.
+  **Serves →** Goal.
 
 **Open decisions — waiting on Matt, oldest first:**
 
