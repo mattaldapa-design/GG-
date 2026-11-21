@@ -33,8 +33,9 @@ app/                 the build, version 12: index.html, sw.js,
 git                  remote: github.com/mattaldapa-design/GG- (Matt made it
                      2026-10-18); the local branch claude/project-kickoff-985f79
                      is pushed there as main, the default branch. Since
-                     2026-11-20 the project folder's own branch, master in
-                     D:\Friendly Competition, holds the same commits
+                     2026-11-20 the project folder's own branch, main in
+                     D:\Friendly Competition (renamed from master that day,
+                     tracking GitHub's main), holds the same commits
 ```
 
 Started from a portion of Starter Dough (commit `9c1fcb3`, standard
@@ -863,7 +864,9 @@ decided, where it is enforced, and what it **serves**.
   so nothing was rewritten. The agent's reading: "the main branch" is the
   local one in the project folder, since GitHub's `main` already had
   everything. Alternative: leave `master` at the seed and keep working
-  only in the worktree. Enforced: `master` in the project folder.
+  only in the worktree. Then, asked whether to rename the local branch
+  to match GitHub: *"Yes, rename it"*. `master` became `main`, tracking
+  `origin/main`. Enforced: `main` in the project folder.
   **Serves →** Goal.
 
 **Open decisions — waiting on Matt, oldest first:**
